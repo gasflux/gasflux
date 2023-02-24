@@ -65,8 +65,5 @@ jobs:
         run: pip install -r dev-requirements.txt
         if: steps.cache.outputs.cache-hit != 'true'
 
-      - name: install package
-        run: pip install -e .
-
       - name: pytest
         run: PYTHONPATH=$PWD pytest tests/
