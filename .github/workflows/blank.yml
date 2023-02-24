@@ -1,0 +1,72 @@
+name: CI
+
+on: [push]
+
+jobs:
+
+  qa:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10']
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: Install Development Dependencies
+        run: pip install -r dev-requirements.txt
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: flake8
+        run: flake8 . --statistics
+
+      - name: isort
+        run: isort .
+
+      - name: safety
+        run: safety check --ignore=51668 --ignore=52495
+
+  tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.10']
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: Install Development Dependencies
+        run: pip install -r dev-requirements.txt
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: install package
+        run: pip install -e .
+
+      - name: pytest
+        run: PYTHONPATH=$PWD pytest tests/
