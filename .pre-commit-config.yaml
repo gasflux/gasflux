@@ -18,7 +18,6 @@ repos:
       - id: debug-statements # checks for debugger imports and py37+ `breakpoint()` calls in python source
       #      - id: detect-aws-credentials  # detects *your* aws credentials from the aws cli credentials file
       - id: detect-private-key # detects the presence of private keys
-      - id: double-quote-string-fixer # replaces double quoted strings with single quoted strings
       - id: end-of-file-fixer # ensures that a file is either empty, or ends with one newline
         files: ^.*py$
       - id: mixed-line-ending # replaces or checks mixed line ending
