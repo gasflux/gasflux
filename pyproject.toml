@@ -1,0 +1,48 @@
+[project]
+name = "gasflux"
+version = "0.1.0"
+description = "A package to calculate gas emissions fluxes from natural and anthropogenic sources"
+authors = [{ name = "Jamie McQuilkin", email = "jamie.mcquilkin@gmail.com" }]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.11"
+
+dynamic = ["dependencies", "optional-dependencies"]
+
+[project.urls]
+"Homepage" = "https://gasflux.github.io"
+"Bug Tracker" = "https://github.com/gasflux/gasflux/issues"
+
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+optional-dependencies = { dev = { file = ["dev-requirements.txt"] } }
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.ruff.lint]
+select = [
+    "A",   # prevent using keywords that clobber python builtins
+    "B",   # bugbear: security warnings
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "ISC", # implicit string concatenation
+    "UP",  # alert you when better syntax is available in your python version
+    "RUF", # the ruff developer's own rules
+]
+
+[tool.ruff]
+line-length = 120
+ignore = [
+    "G004",  # G004: Logging statement uses f-string
+    "PD901", # PD901: Using "df" as a variable name is not recommended
+]
+target-version = "py311"
+
+
+[tool.ruff.pydocstyle]
+convention = "google"
