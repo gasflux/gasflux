@@ -1,12 +1,4 @@
 from . import (baseline, gas, interpolation, pipelines, plotting,
-               pre_processing, processing)
+               pre_processing, processing, reporting)
 
-__all__ = [
-    "baseline",
-    "gas",
-    "interpolation",
-    "pipelines",
-    "plotting",
-    "pre_processing",
-    "processing",
-]
+__all__ = ["baseline", "gas", "interpolation", "pipelines", "plotting", "pre_processing", "processing", "reporting"]

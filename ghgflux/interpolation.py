@@ -16,14 +16,12 @@ def simpsonintegrate(array: np.ndarray, x_cell_size: float, y_cell_size: float) 
     return vol_grid * x_cell_size * y_cell_size  # type: ignore
 
 
-def directional_gas_variogram(df: pd.DataFrame, x: str, z: str, gas: str, plot: bool = True, **variogram_settings):
+def directional_gas_variogram(df: pd.DataFrame, x: str, z: str, gas: str, **variogram_settings):
     v = skg.Variogram(
         df[[x, z]].to_numpy(),
         df[gas].to_numpy(),
         **variogram_settings,
     )
-    if plot:
-        v.plot()
     return v
 
 
@@ -33,14 +31,12 @@ def ordinary_kriging(
     y: str,
     gas: str,
     ordinary_kriging_settings: dict,
-    plot_variogram=True,
-    plot_contours=True,
-    plot_grid=False,
     **variogram_settings,
 ):
     skg.plotting.backend("plotly")  # type: ignore
+    variogram = directional_gas_variogram(df, x, y, gas, **variogram_settings)
     ok = skg.OrdinaryKriging(
-        variogram=directional_gas_variogram(df, x, y, gas, plot=plot_variogram, **variogram_settings),
+        variogram,
         coordinates=df[[x, y]].to_numpy(),
         values=df[gas].to_numpy(),
         min_points=ordinary_kriging_settings["min_points"],
@@ -77,13 +73,35 @@ def ordinary_kriging(
     np.nan_to_num(s2, copy=False, nan=0)
     # volume_error = simpsonintegrate(s2, x_cell_size, y_cell_size)
 
-    if plot_contours:
-        plotting.contour_krig(df, xx, yy, fieldpos, x, y)
-    if plot_grid:
-        plotting.heatmap_krig(xx, yy, fieldpos)
-
-    print(
+    contour_plot = plotting.contour_krig(df, xx, yy, fieldpos, x, y)
+    grid_plot = plotting.heatmap_krig(xx, yy, fieldpos)
+    output_text = (
         f"The emissions flux is {volume:.3f}kgh⁻¹; "
         f"the cut and fill volumes of the grid are {volumepos:.3f} and {volumeneg:.3f}kgh⁻¹. "
         f"The grid itself is {x_nodes}x{y_nodes} nodes, with each node measuring {x_cell_size:.2f}m x {y_cell_size:.2f}m."
     )
+    krig_variables = {
+        "field": field,
+        "fieldpos": fieldpos,
+        "fieldneg": fieldneg,
+        "xx": xx,
+        "yy": yy,
+        "volume": volume,
+        "volumepos": volumepos,
+        "volumeneg": volumeneg,
+        "s2": s2,
+    }
+    variogram_plot = variogram.plot(show=False)
+
+    return krig_variables, output_text, contour_plot, grid_plot, variogram_plot
+
+
+def additive_row_integration(df: pd.DataFrame, rows: str = "slice"):
+    integrals = {}
+    for i in range(0, df["slice"].max() + 1):
+        df_slice = df[df["slice"] == i]
+        df_slice = df_slice.sort_values(by="x")
+        line_integral = integrate.simpson(df_slice["ch4_kg_h_m2"], df_slice["x"])
+        area_integral = line_integral * (df_slice["altitude"].max() - df_slice["altitude"].min())
+        integrals[i] = area_integral
+    return integrals

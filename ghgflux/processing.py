@@ -1,9 +1,11 @@
 """Processing function, usually implying some kind of filtering or data transformation."""
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.odr as odr
 from scipy.optimize import least_squares
+from scipy.signal import find_peaks
 
 
 # add columns for drone bearings
@@ -64,7 +66,24 @@ def bimodal_azimuth(df):
     return mode1, mode2
 
 
-def heuristic_row_filter(
+def altitude_row_splitter(df):
+    heights, bin_edges = np.histogram(df["altitude"], bins=40)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    peaks, properties = find_peaks(heights)
+    bin_centers[peaks]
+
+    slice_edges = (bin_centers[peaks][:-1] + bin_centers[peaks][1:]) / 2
+    slice_edges = np.append(df["altitude"].min(), slice_edges)
+    slice_edges = np.append(slice_edges, df["altitude"].max())
+    fig, ax = plt.subplots()
+    ax.stairs(edges=bin_edges, values=heights, fill=True)
+    ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
+    ax.vlines(slice_edges, ymin=0, ymax=max(heights), color="red")
+    df["slice"] = pd.cut(df["altitude"], bins=slice_edges, labels=False, include_lowest=True)
+    return df, fig
+
+
+def heuristic_row_filter(  # this is only for flat plane flights with azimuth switches
     df,
     azimuth_filter,
     azimuth_window,
