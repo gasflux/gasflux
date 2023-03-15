@@ -1,5 +1,6 @@
 """various plotting functions mainly based around plotly"""
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -396,4 +397,23 @@ def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
         ticklen=5,
         nticks=10,
     )
+    return fig
+
+
+def slice_grid(df):
+    fig, ax = plt.subplots(figsize=(20, 10))
+    for i in range(df["slice"].max() - df["slice"].min() + 1):  # zero indexed
+        df_slice = df[df["slice"] == i]
+        ymin = df_slice["altitude"].min()
+        ymax = df_slice["altitude"].max()
+        x = sorted(df_slice["circumference_distance"].values)
+        y = [ymin, ymax]
+        xx, yy = np.meshgrid(x, y)
+        z = df_slice["ch4_kg_h_m2"].values
+        zz = np.array([z, z])
+        ax.pcolormesh(
+            xx, yy, zz, cmap="viridis", shading="nearest", clim=(df["ch4_kg_h_m2"].min(), df["ch4_kg_h_m2"].max())
+        )
+        ax.set_ylim(df["altitude"].min(), df["altitude"].max())
+    plt.axis("scaled")
     return fig
