@@ -1,11 +1,13 @@
 """various plotting functions mainly based around plotly"""
 
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+import simplekml
 from plotly.subplots import make_subplots
 
 from . import processing
@@ -417,3 +419,35 @@ def slice_grid(df):
         ax.set_ylim(df["altitude"].min(), df["altitude"].max())
     plt.axis("scaled")
     return fig
+
+
+def create_kml_file(data, output_file, column):
+    kml = simplekml.Kml()
+
+    min_ch4 = data[column].min()
+    max_ch4 = data[column].max()
+
+    custom_colors = [
+        "#008080",
+        "#70a494",
+        "#b4c8a8",
+        "#f6edbd",
+        "#edbb8a",
+        "#de8a5a",
+        "#ca562c",
+    ]  # based on plotly geyser
+    cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", custom_colors)
+
+    for index, row in data.iterrows():
+        ch4_normalized = (row[column] - min_ch4) / (max_ch4 - min_ch4)
+        color = mcolors.rgb2hex(cmap(ch4_normalized))
+
+        pnt = kml.newpoint(
+            coords=[(row["longitude"], row["latitude"], row["altitude"])], altitudemode="relativeToGround"
+        )
+        pnt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
+        pnt.iconstyle.color = simplekml.Color.rgb(int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16))
+        pnt.iconstyle.scale = 0.6
+        pnt.description = f"CH4 Concentration: {row[column]} ppm"
+
+    kml.save(output_file)

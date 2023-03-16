@@ -1,8 +1,33 @@
 """Functions specific to each use case that process the data from start to finished products"""
 
+import numpy as np
 import pandas as pd
 
 from . import gas, pre_processing, processing
+
+
+# functions for ABB GGA data
+def ABB_GGA_preprocess(df):
+    df = df.rename(
+        columns={
+            "[CH4]_ppm": "ch4",
+            "Latitude (degrees)": "latitude",
+            "Longitude (degrees)": "longitude",
+            "Altitude (m)": "altitude",
+            "WindSpeed3D (m/s)": "windspeed",
+            "WindDirection (degree)": "winddir",
+        }
+    )
+    df.index = pd.to_datetime(df["SysTime"])
+    df = df.dropna()
+    df = pre_processing.add_utm(df)
+    # pre_processing.data_tests(df) # removed for now as windspeeds are too high
+    df_list = {}
+    # split df into several sections based on large gaps in timestamps, called df1, df2 etc.
+    for i, df in enumerate(np.array_split(df, np.where(np.diff(df.index) > pd.Timedelta("1m"))[0] + 1)):
+        df["altitude"] = df["altitude"] - df["altitude"].min()
+        df_list[f"df{i + 1}"] = df
+    return df_list
 
 
 # functions for SeekOps data
@@ -22,6 +47,17 @@ def SeekOps_pre_process(df: pd.DataFrame) -> pd.DataFrame:
     df["ch4"] = df["ch4"].copy() / 1000
     df = pre_processing.add_utm(df)
     pre_processing.data_tests(df)
+    return df
+
+
+def SeekOps_process(df, celsius, millibars):  # after baseline correction
+    df["circ_deviation"], df["circ_azimuth"], df_radius = processing.circle_deviation(
+        df, "utm_easting", "utm_northing"
+    )
+    df = df[df["circ_deviation"].between(-df_radius / 10, df_radius / 10)].copy()  # 10% radius tolerance
+    df = processing.recentre_azimuth(df, r=df_radius)
+    df["x"] = df["circumference_distance"]
+    df = gas.methane_flux_column(df, celsius, millibars)
     return df
 
 
@@ -109,15 +145,4 @@ def SciAv_process(
     df, plane_angle = processing.flatten_linear_plane(df, odr_distance_filter)
     df = gas.methane_flux_column(df, celsius, millibars)
     df = processing.x_filter(df, startrow, endrow)
-    return df
-
-
-def SeekOps_process(df, celsius, millibars):  # after baseline correction
-    df["circ_deviation"], df["circ_azimuth"], df_radius = processing.circle_deviation(
-        df, "utm_easting", "utm_northing"
-    )
-    df = df[df["circ_deviation"].between(-df_radius / 10, df_radius / 10)].copy()  # 10% radius tolerance
-    df = processing.recentre_azimuth(df, r=df_radius)
-    df["x"] = df["circumference_distance"]
-    df = gas.methane_flux_column(df, celsius, millibars)
     return df

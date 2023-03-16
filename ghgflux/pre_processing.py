@@ -11,7 +11,7 @@ def data_tests(df: pd.DataFrame):
     assert df.index.is_monotonic_increasing, "data is not sorted by time"
     assert df.index.is_unique, "data has duplicate timestamps"
     assert df["ch4"].isna().sum() == 0, "ch4 has missing values"
-    assert df["windspeed"].min() > 0, "windspeed values are negative"
+    assert df["windspeed"].min() >= 0, "windspeed values are negative"
     assert df["windspeed"].max() < 20, "windspeed values are too high"
     if df["windspeed"].max() > 15:
         print("Warning: windspeed is greater than 15 m/s, perhaps due to errors in the data.")
@@ -65,7 +65,7 @@ def manual_filtering(dict_dfs: dict, split_times: dict, mask_spans: dict) -> dic
     return filtered_dfs
 
 
-def remove_outliers(df: pd.DataFrame, column: str, name: str, plot: bool = False):
+def remove_outliers(df: pd.DataFrame, column: str, name: str):
     q1 = df[column].quantile(0.25)
     q3 = df[column].quantile(0.75)
     iqr = q3 - q1
