@@ -202,3 +202,13 @@ def splittime(df):
     minalt = df["altitude"].min()
     splittime = df[df["altitude"] == minalt].index[0]
     return splittime
+
+
+def wind_rel_ground(df, aircraft_u, aircraft_v, wind_u, wind_v):  # u = N, v = E
+    u_wind_ground = wind_u - aircraft_u
+    v_wind_ground = wind_v - aircraft_v
+    windspd_ground = np.sqrt(u_wind_ground**2 + v_wind_ground**2)
+    winddir_ground = np.degrees(np.arctan2(u_wind_ground, v_wind_ground) % (2 * np.pi))
+    df["windspd_ground"] = windspd_ground
+    df["winddir_ground"] = winddir_ground
+    return df

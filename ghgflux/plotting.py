@@ -421,11 +421,11 @@ def slice_grid(df):
     return fig
 
 
-def create_kml_file(data, output_file, column):
+def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudemode: str):
     kml = simplekml.Kml()
 
-    min_ch4 = data[column].min()
-    max_ch4 = data[column].max()
+    min = data[column].min()
+    max = data[column].max()
 
     custom_colors = [
         "#008080",
@@ -439,15 +439,13 @@ def create_kml_file(data, output_file, column):
     cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", custom_colors)
 
     for index, row in data.iterrows():
-        ch4_normalized = (row[column] - min_ch4) / (max_ch4 - min_ch4)
-        color = mcolors.rgb2hex(cmap(ch4_normalized))
+        col_normalized = (row[column] - min) / (max - min)
+        color = mcolors.rgb2hex(cmap(col_normalized))
 
-        pnt = kml.newpoint(
-            coords=[(row["longitude"], row["latitude"], row["altitude"])], altitudemode="relativeToGround"
-        )
+        pnt = kml.newpoint(coords=[(row["longitude"], row["latitude"], row["altitude"])], altitudemode=altitudemode)
         pnt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
         pnt.iconstyle.color = simplekml.Color.rgb(int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16))
         pnt.iconstyle.scale = 0.6
-        pnt.description = f"CH4 Concentration: {row[column]} ppm"
+        pnt.description = f"Concentration: {row[column]} ppm"
 
     kml.save(output_file)
