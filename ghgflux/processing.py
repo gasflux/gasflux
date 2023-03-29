@@ -111,20 +111,20 @@ def heuristic_row_filter(  # this is only for flat plane flights with azimuth sw
 
 
 # linear flight path functions
-def linear_reg_equation(coefs: tuple[float, float], x: pd.Series) -> pd.Series:
-    return coefs[0] * x + coefs[1]  # y = mx + c
+def linear_reg_equation(B, x):
+    return B[0] * x + B[1]  # y = mx + c
 
 
 def flight_odr_fit(df: pd.DataFrame):
-    fit = odr.odr(linear_reg_equation, [1, 0], y=df["utm_northing"], x=df["utm_easting"])  # initial guess of m=1, c=0
+    model = odr.Model(linear_reg_equation)
+    data = odr.Data(df["utm_easting"], df["utm_northing"])
+    odr_instance = odr.ODR(data, model, beta0=[1, 0])  # initial guess of m=1, c=0
+    fit = odr_instance.run()
+
     # add column of distance from linear fit
-    df = df.assign(
-        distance_from_fit=np.sqrt(
-            (df["utm_northing"] - linear_reg_equation(fit[0], df["utm_easting"])) ** 2
-            + (df["utm_easting"] - df["utm_easting"]) ** 2
-        )
-    )
-    return df, fit[0]
+    m, c = fit.beta
+    df = df.assign(distance_from_fit=abs((m * df["utm_easting"] - df["utm_northing"] + c) / np.sqrt(m**2 + 1)))
+    return df, fit.beta
 
 
 def flatten_linear_plane(df: pd.DataFrame, distance_filter) -> tuple[pd.DataFrame, float]:
