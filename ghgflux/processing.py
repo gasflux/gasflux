@@ -116,20 +116,22 @@ def linear_reg_equation(coefs: tuple[float, float], x: pd.Series) -> pd.Series:
 
 
 def flight_odr_fit(df: pd.DataFrame):
-    fit = odr.odr(linear_reg_equation, [1, 0], y=df["utm_northing"], x=df["utm_easting"])  # inital guess of m=1, c=0
+    fit = odr.odr(linear_reg_equation, [1, 0], y=df["utm_northing"], x=df["utm_easting"])  # initial guess of m=1, c=0
     # add column of distance from linear fit
-    df["distance_from_fit"] = np.sqrt(
-        (df["utm_northing"] - linear_reg_equation(fit[0], df["utm_easting"])) ** 2
-        + (df["utm_easting"] - df["utm_easting"]) ** 2
+    df = df.assign(
+        distance_from_fit=np.sqrt(
+            (df["utm_northing"] - linear_reg_equation(fit[0], df["utm_easting"])) ** 2
+            + (df["utm_easting"] - df["utm_easting"]) ** 2
+        )
     )
     return df, fit[0]
 
 
 def flatten_linear_plane(df: pd.DataFrame, distance_filter) -> tuple[pd.DataFrame, float]:
     df, coefs2D = flight_odr_fit(df)
-    df = df.loc[df["distance_from_fit"] < distance_filter, :].copy()
+    df = df.loc[df["distance_from_fit"] < distance_filter, :]
     df, coefs2D = flight_odr_fit(df)  # re-fit to filtered points
-    df = df.loc[df["distance_from_fit"] < distance_filter, :].copy()
+    df = df.loc[df["distance_from_fit"] < distance_filter, :]
     rotation = np.arctan(coefs2D[0])
     df.loc[:, "x"] = (df["utm_easting"] - df["utm_easting"].min()) * np.cos(-rotation) - (
         df["utm_northing"] - df["utm_northing"].min()
