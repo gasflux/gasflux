@@ -79,7 +79,7 @@ def altitude_row_splitter(df):
     ax.stairs(edges=bin_edges, values=heights, fill=True)
     ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
     ax.vlines(slice_edges, ymin=0, ymax=max(heights), color="red")
-    df["slice"] = pd.cut(df["altitude"], bins=slice_edges, labels=False, include_lowest=True)
+    df["slice"] = pd.cut(df["altitude"], bins=slice_edges, labels=False, include_lowest=True)  # type: ignore
     return df, fig
 
 
@@ -127,17 +127,18 @@ def flight_odr_fit(df: pd.DataFrame):
 
 def flatten_linear_plane(df: pd.DataFrame, distance_filter) -> tuple[pd.DataFrame, float]:
     df, coefs2D = flight_odr_fit(df)
-    df = df[df["distance_from_fit"] < distance_filter].copy()  # filter to points near the linear fit
+    df = df.loc[df["distance_from_fit"] < distance_filter, :].copy()
     df, coefs2D = flight_odr_fit(df)  # re-fit to filtered points
-    df = df[df["distance_from_fit"] < distance_filter].copy()  # filter again to points near the linear fit
+    df = df.loc[df["distance_from_fit"] < distance_filter, :].copy()
     rotation = np.arctan(coefs2D[0])
-    df["x"] = (df["utm_easting"] - df["utm_easting"].min()) * np.cos(-rotation) - (
+    df.loc[:, "x"] = (df["utm_easting"] - df["utm_easting"].min()) * np.cos(-rotation) - (
         df["utm_northing"] - df["utm_northing"].min()
     ) * np.sin(-rotation)
-    df["y"] = (df["utm_easting"] - df["utm_easting"].min()) * np.sin(-rotation) + (
+    df.loc[:, "y"] = (df["utm_easting"] - df["utm_easting"].min()) * np.sin(-rotation) + (
         df["utm_northing"] - df["utm_northing"].min()
     ) * np.cos(-rotation)
-    df["z"] = df.altitude
+    df.loc[:, "z"] = df.altitude
+
     plane_angle = (np.pi / 2) - np.arctan(coefs2D[0])
     return df, plane_angle
 
