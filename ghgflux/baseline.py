@@ -24,7 +24,8 @@ def baseline(
     bkg_points = params["mask"]
     background = (df[y] - bkg)[bkg_points]
     signal = (df[y] - bkg)[~bkg_points]
-    fig = plotting.baseline_plotting(df, y, bkg)
+    df["signal"] = np.invert(bkg_points)
+    fig = plotting.baseline_plotting(df, y, bkg, signal)
     output_text = (
         f"Baseline algorithm: {algorithm}\n"
         f"Positive and negative 95% percentile of baseline: {np.percentile(background, 2.5):.2f} ppm, {np.percentile(background, 97.5):.2f} ppm\n"

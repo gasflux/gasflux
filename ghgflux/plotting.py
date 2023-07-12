@@ -38,6 +38,7 @@ def scatter_3d(
     x: str = "utm_easting",
     y: str = "utm_northing",
     z: str = "altitude",
+    title: str = "Normalised methane conc. (ppm)",
 ):
     fig = px.scatter_3d(df, x=x, y=y, z=z, color=color, opacity=0.5, color_continuous_scale=styling["colorscale"])
     fig.update_traces(marker_size=4)
@@ -53,6 +54,7 @@ def scatter_3d(
             ]
         ),
     )
+    fig.update_layout(coloraxis_colorbar=dict(title=title))
     return fig
 
 
@@ -87,11 +89,32 @@ def scatter_2d(
     return fig
 
 
-def gas_time_series(df: pd.DataFrame, gas: str = "ch4", color: str = "ch4", split=None):
-    fig = px.scatter(df, x=df.index, y=df[gas], color=df[color], color_continuous_scale=styling["colorscale"])
+def time_series(df: pd.DataFrame, y: str = "ch4", y2=None, color=None, split=None):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df[y],
+            name=y,
+            mode="markers",
+        )
+    )
+    if color is not None:
+        fig.update_traces(marker_color=df[color], color_continuous_scale=styling["colorscale"])
     fig.update_traces(marker_size=8)
+    if y2 is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df[y2],
+                name=y2,
+                yaxis="y2",
+                mode="markers",
+            )
+        )
+        fig.update_layout(yaxis2=dict(overlaying="y", side="right"))
     if split is not None:
-        y_min, y_max = df[gas].min(), df[gas].max()
+        y_min, y_max = df[y].min(), df[y].max()
         fig.update_layout(
             shapes=[
                 dict(
@@ -106,23 +129,25 @@ def gas_time_series(df: pd.DataFrame, gas: str = "ch4", color: str = "ch4", spli
                 )
             ]
         )
+    fig.update(layout_yaxis_range=[0, df[y].max() * 1.05])
     fig.update_traces(opacity=0.5)
-
     return fig
 
 
-def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray):
+def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     ymin = df[y].min()
     ymax = df[y].max()
     ylim = [ymin * 0.95, ymax * 1.05]
     y2min = (df[y] - bkg).min()
     y2lim = (y2min, y2min + (ylim[1] - ylim[0]))
+    df["normalised"] = df[y] - bkg
     fig.update_yaxes(range=ylim, secondary_y=False, title_text="Sensor CH4 (ppm)")
     fig.update_yaxes(range=y2lim, secondary_y=True, title_text="Normalised CH4 (ppm)")
-    fig.add_scatter(x=df.index, y=df[y], opacity=0.5, name="Raw Data")
+    fig.add_scatter(x=df.index, y=df[y], opacity=0.3, name="Raw Data")
     fig.add_scatter(x=df.index, y=bkg, mode="lines", name="Fitted Baseline", line=dict(dash="dash"))
-    fig.add_scatter(x=df.index, y=df[y] - bkg, yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5)
+    fig.add_scatter(x=df.index, y=df["normalised"], yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5)
+    fig.add_scatter(x=signal.index, y=signal.values, yaxis="y2", name="Signal Points", mode="markers", opacity=0.5)
 
     return fig
 
@@ -399,6 +424,7 @@ def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
         ticklen=5,
         nticks=10,
     )
+    fig.update_layout(coloraxis_colorbar=dict(len=0.25))
     return fig
 
 

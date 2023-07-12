@@ -1,4 +1,4 @@
-"""Functions related top kriging and other kinds of interpolation"""
+"""Functions related to kriging and other kinds of interpolation"""
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,11 @@ def simpsonintegrate(array: np.ndarray, x_cell_size: float, y_cell_size: float) 
     return vol_grid * x_cell_size * y_cell_size  # type: ignore
 
 
-def directional_gas_variogram(df: pd.DataFrame, x: str, z: str, gas: str, **variogram_settings):
+def directional_gas_variogram(
+    df: pd.DataFrame, x: str, z: str, gas: str, variogram_filter: float | None = None, **variogram_settings
+):
+    if variogram_filter:
+        df = df[df[gas] > variogram_filter]
     v = skg.Variogram(
         df[[x, z]].to_numpy(),
         df[gas].to_numpy(),
@@ -31,10 +35,11 @@ def ordinary_kriging(
     y: str,
     gas: str,
     ordinary_kriging_settings: dict,
+    variogram_filter: float | None = None,
     **variogram_settings,
 ):
     skg.plotting.backend("plotly")  # type: ignore
-    variogram = directional_gas_variogram(df, x, y, gas, **variogram_settings)
+    variogram = directional_gas_variogram(df, x, y, gas, variogram_filter, **variogram_settings)
     ok = skg.OrdinaryKriging(
         variogram,
         coordinates=df[[x, y]].to_numpy(),
@@ -69,12 +74,12 @@ def ordinary_kriging(
     fieldneg[fieldneg > 0] = 0
     volumeneg = simpsonintegrate(fieldneg, x_cell_size, y_cell_size)
 
-    s2 = ok.sigma.reshape(xx.shape)
-    np.nan_to_num(s2, copy=False, nan=0)
-    # volume_error = simpsonintegrate(s2, x_cell_size, y_cell_size)
+    error_1s = ok.sigma.reshape(xx.shape)
+    np.nan_to_num(error_1s, copy=False, nan=0)
+    volume_error = simpsonintegrate(error_1s, x_cell_size, y_cell_size)
 
-    contour_plot = plotting.contour_krig(df, xx, yy, fieldpos, x, y)
-    grid_plot = plotting.heatmap_krig(xx, yy, fieldpos)
+    contour_plot = plotting.contour_krig(df, xx, yy, field, x, y)
+    grid_plot = plotting.heatmap_krig(xx, yy, field)
     output_text = (
         f"The emissions flux is {volume:.3f}kgh⁻¹; "
         f"the cut and fill volumes of the grid are {volumepos:.3f} and {volumeneg:.3f}kgh⁻¹. "
@@ -89,17 +94,18 @@ def ordinary_kriging(
         "volume": volume,
         "volumepos": volumepos,
         "volumeneg": volumeneg,
-        "s2": s2,
+        "error field (1 sigma)": error_1s,
+        "volume_error": volume_error,
     }
     variogram_plot = variogram.plot(show=False)
 
     return krig_variables, output_text, contour_plot, grid_plot, variogram_plot
 
 
-def additive_row_integration(df: pd.DataFrame, rows: str = "slice"):
+def additive_row_integration(df: pd.DataFrame, rowlabel: str = "slice"):
     integrals = {}
-    for i in range(0, df["slice"].max() + 1):
-        df_slice = df[df["slice"] == i]
+    for i in range(0, df[rowlabel].max() + 1):
+        df_slice = df[df[rowlabel] == i]
         df_slice = df_slice.sort_values(by="x")
         line_integral = integrate.simpson(df_slice["ch4_kg_h_m2"], df_slice["x"])
         area_integral = line_integral * (df_slice["altitude"].max() - df_slice["altitude"].min())

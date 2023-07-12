@@ -6,7 +6,7 @@ from jinja2 import Template
 from . import plotting
 
 
-def mass_balance(dfs, threed_figs, krig_figs, windrose_figs, outlier_figs, baseline_figs, krig_params):
+def mass_balance(dfs, threed_figs, krig_figs, windrose_figs, wind_figs, baseline_figs, krig_params):
     template_path = Path(__file__).parents[1] / "templates" / "mass_balance_template.html"
     for name, df in dfs.items():
         output_path = Path(os.getcwd()) / "reports" / name
@@ -33,10 +33,10 @@ def mass_balance(dfs, threed_figs, krig_figs, windrose_figs, outlier_figs, basel
             print(f"Missing windrose plot in {name}: {e}")
             plots["windrose"] = plotting.blank_figure()
         try:
-            plots["outliers"] = outlier_figs[name]
+            plots["wind"] = wind_figs[name]
         except KeyError as e:
-            print(f"Missing outliers plot in {name}: {e}")
-            plots["outliers"] = plotting.blank_figure()
+            print(f"Missing wind plot in {name}: {e}")
+            plots["wind"] = plotting.blank_figure()
         try:
             plots["baseline"] = baseline_figs[name]
         except KeyError as e:
@@ -61,8 +61,10 @@ def mass_balance(dfs, threed_figs, krig_figs, windrose_figs, outlier_figs, basel
             threeD=plot_paths["3D"],
             krig=plot_paths["krig"],
             windrose=plot_paths["windrose"],
-            outliers=plot_paths["outliers"],
+            wind=plot_paths["wind"],
             baseline=plot_paths["baseline"],
         )
-        with open(output_path / f"{name}_mass_balance_report.html", "w") as f:
+        report_path = output_path.parent / "mass_balance_reports"
+        report_path.mkdir(parents=True, exist_ok=True)
+        with open(report_path / f"{name}_mass_balance_report.html", "w") as f:
             f.write(rendered_template)

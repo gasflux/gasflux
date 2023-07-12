@@ -32,15 +32,30 @@ def ABB_GGA_preprocess(df):
 
 # functions for SeekOps data
 def SeekOps_pre_process(df: pd.DataFrame) -> pd.DataFrame:
+    df.columns = [
+        "UTCs",
+        "Month",
+        "Day",
+        "Year",
+        "LatitudeDD",
+        "LongitudeDD",
+        "AltitudeGpsM",
+        "PressuremBar",
+        "TemperatureC",
+        "WindAngleMetDegrees",
+        "WindSpdMps",
+        "MethanePPB",
+    ]
     df = pre_processing.timestamp_from_four_columns(df)
+    df = df.loc[~df.index.duplicated(keep="first")].copy()
     df.rename(
         columns={
-            "Latitude": "latitude",
-            "Longitude": "longitude",
-            "Altitude_m": "altitude",
-            "Methane_ppb": "ch4",
-            "WindSpeed_ms": "windspeed",
-            "WindDirection": "winddir",
+            "LatitudeDD": "latitude",
+            "LongitudeDD": "longitude",
+            "AltitudeGpsM": "altitude",
+            "MethanePPB": "ch4",
+            "WindSpdMps": "windspeed",
+            "WindAngleMetDegrees": "winddir",
         },
         inplace=True,
     )
@@ -120,6 +135,7 @@ def SciAv_pre_process(folder):
         },
         inplace=True,
     )
+    df["altitude"] = df["altitude"].copy() - df["altitude"].iloc[0]  # sets altitude to above home
     name = folder.parts[-2] + "_" + folder.parts[-1]
     df = pre_processing.add_utm(df)
     df, outlier_fig = pre_processing.remove_outliers(df=df, name=name, column="windspeed")
@@ -136,13 +152,43 @@ def SciAv_process(
     azimuth_window,
     elevation_filter,
 ):
-    df, startrow, endrow = processing.heuristic_row_filter(
+    original_df = df.copy()
+    df = processing.heading_filter(
         df,
         azimuth_filter=azimuth_filter,
         azimuth_window=azimuth_window,
         elevation_filter=elevation_filter,
     )
+    df, startrow, endrow = processing.monotonic_row_filter(df)
     df, plane_angle = processing.flatten_linear_plane(df, odr_distance_filter)
     df = gas.methane_flux_column(df, celsius, millibars)
     df = processing.x_filter(df, startrow, endrow)
+    removed_df = original_df.loc[original_df.index.difference(df.index)]
+    return df, removed_df
+
+
+def SciAv_process_gaussian(
+    df,
+    celsius,
+    millibars,
+    odr_distance_filter,
+    azimuth_filter,
+    azimuth_window,
+    elevation_filter,
+    rolling_window,
+):
+    df = processing.add_rows(df)
+    df = processing.heading_filter(
+        df,
+        azimuth_filter=azimuth_filter,
+        azimuth_window=azimuth_window,
+        elevation_filter=elevation_filter,
+        rolling_window=rolling_window,
+    )
+    df = processing.add_rows(df)
+    df = processing.heading_filter(  # do it twice to remove points on the way up and down
+        df, azimuth_filter=azimuth_filter, azimuth_window=azimuth_window, elevation_filter=elevation_filter
+    )
+    df, plane_angle = processing.flatten_linear_plane(df, odr_distance_filter)
+    df = gas.methane_flux_column(df, celsius, millibars)
     return df

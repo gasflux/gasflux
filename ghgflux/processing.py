@@ -9,12 +9,17 @@ from scipy.signal import find_peaks
 
 
 # add columns for drone bearings
-def heading(df):
+def heading(df, rolling_window=1):
     df["hor_distance"] = np.sqrt((df["utm_northing"].diff()) ** 2 + (df["utm_easting"].diff()) ** 2)
     df["vert_distance"] = df["altitude"].diff()
 
-    df["elevation_heading"] = np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"]))
-    df["azimuth_heading"] = np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())) % 360
+    df["elevation_heading"] = (
+        np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"])).rolling(rolling_window).mean()
+    )
+    df["azimuth_heading"] = (
+        np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())).rolling(rolling_window).mean()
+        % 360
+    )
     return df
 
 
@@ -54,6 +59,7 @@ def mCount(dict):
 
 def bimodal_azimuth(df):
     data = df["azimuth_heading"].to_numpy()
+    data = data[~np.isnan(data)]
     hist, edges = np.histogram(data, bins=50)
     max_freq_idx = np.argsort(hist)[::-1][:2]
     mode1, mode2 = edges[max_freq_idx][0], edges[max_freq_idx][1]
@@ -83,13 +89,23 @@ def altitude_row_splitter(df):
     return df, fig
 
 
-def heuristic_row_filter(  # this is only for flat plane flights with azimuth switches
+def add_rows(df):
+    df = heading(df)
+    df["row"] = 0  # split into lines by incrementing based on azimuth heading switches
+    df.loc[df["azimuth_heading"].diff().abs() > 90, "row"] = 1
+    df["row"] = df["row"].cumsum()
+    return df
+
+
+# this function filters the data based on heading, assuming that there is a bimodal azimuth and that the data gathering is flat altitude transects
+def heading_filter(
     df,
     azimuth_filter,
     azimuth_window,
     elevation_filter,
+    rolling_window=1,
 ):
-    df = heading(df)
+    df = heading(df, rolling_window=rolling_window)
     df = df[abs(df["elevation_heading"]) < elevation_filter]  # degrees, filters ups and downs
     azi1, azi2 = bimodal_azimuth(df)
     print(f"Drone appears to be flying mainly on the headings {azi1:.2f} degrees and {azi2:.2f} degrees")
@@ -98,9 +114,12 @@ def heuristic_row_filter(  # this is only for flat plane flights with azimuth sw
         & (df["azimuth_heading"] > azi1 - azimuth_filter)
         | (df["azimuth_heading"] < azi2 + azimuth_filter) & (df["azimuth_heading"] > azi2 - azimuth_filter)
     ]
-    df["row"] = 0  # split into lines by incrementing based on azimuth heading switches
-    df.loc[df["azimuth_heading"].diff().abs() > 90, "row"] = 1
-    df["row"] = df["row"].cumsum()
+    return df
+
+
+# this function sorts the data into rows based on azimuth switches and then filters to the biggest monotonic series of values
+def monotonic_row_filter(df):
+    df = add_rows(df)
     alt_dict = dict(df.groupby("row")["altitude"].mean())
     startrow, endrow = mCount(alt_dict)  # type: ignore
     df = df[(df["row"] >= startrow) & (df["row"] <= endrow)]  # filter to the biggest monotonic series of values
@@ -127,6 +146,7 @@ def flight_odr_fit(df: pd.DataFrame):
     return df, fit.beta
 
 
+# function to take a 3D plane that is near-linear in the xy and turn it into a linear plane with x as distance along the plane and y as depth into the plane
 def flatten_linear_plane(df: pd.DataFrame, distance_filter) -> tuple[pd.DataFrame, float]:
     df, coefs2D = flight_odr_fit(df)
     df = df.loc[df["distance_from_fit"] < distance_filter, :]

@@ -10,3 +10,11 @@ To install, clone the repository using e.g. `git clone ` , cd to the main direct
 
 Then run `pip install -r requirements.txt` to install dependencies.
 
+
+## Drone Logs
+
+The best way to convert encoded DJI logs is to use "djiparsetext", a C++ library.
+
+Documentation can be found here: http://djilogs.live555.com/
+
+
