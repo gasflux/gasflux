@@ -1,26 +1,14 @@
 """Processing function, usually implying some kind of filtering or data transformation."""
 
+from itertools import groupby
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.odr as odr
 from scipy.optimize import least_squares
 from scipy.signal import find_peaks
-
-
-# add columns for drone bearings
-def heading(df, rolling_window=1):
-    df["hor_distance"] = np.sqrt((df["utm_northing"].diff()) ** 2 + (df["utm_easting"].diff()) ** 2)
-    df["vert_distance"] = df["altitude"].diff()
-
-    df["elevation_heading"] = (
-        np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"])).rolling(rolling_window).mean()
-    )
-    df["azimuth_heading"] = (
-        np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())).rolling(rolling_window).mean()
-        % 360
-    )
-    return df
+from scipy.spatial import KDTree
 
 
 # function to return the start and end of the biggest monotonic series of values from a dictionary
@@ -57,6 +45,7 @@ def mCount(dict):
         return 0, 0
 
 
+# this returns a bimodal azimuth from a dataframe
 def bimodal_azimuth(df):
     data = df["azimuth_heading"].to_numpy()
     data = data[~np.isnan(data)]
@@ -69,7 +58,7 @@ def bimodal_azimuth(df):
         max_freq_idx = np.argsort(hist)[::-1][:2]
         mode1, mode2 = edges[max_freq_idx][0], edges[max_freq_idx][1]
     assert 160 < np.abs(mode1 - mode2) < 200
-    return mode1, mode2
+    return [mode1, mode2]
 
 
 def altitude_row_splitter(df):
@@ -89,32 +78,39 @@ def altitude_row_splitter(df):
     return df, fig
 
 
-def add_rows(df):
-    df = heading(df)
+def add_rows(df):  # requires headings
     df["row"] = 0  # split into lines by incrementing based on azimuth heading switches
     df.loc[df["azimuth_heading"].diff().abs() > 90, "row"] = 1
     df["row"] = df["row"].cumsum()
     return df
 
 
-# this function filters the data based on heading, assuming that there is a bimodal azimuth and that the data gathering is flat altitude transects
-def heading_filter(
+def heading_filter(  # requires headings to be added already
     df,
     azimuth_filter,
     azimuth_window,
     elevation_filter,
     rolling_window=1,
 ):
-    df = heading(df, rolling_window=rolling_window)
-    df = df[abs(df["elevation_heading"]) < elevation_filter]  # degrees, filters ups and downs
-    azi1, azi2 = bimodal_azimuth(df)
+    df_unfiltered = df.copy()
+    # Filter out any rows where the absolute value of the elevation heading is greater than the elevation filter.
+    # This removes data that doesn't fall within a flat altitude transect as it excludes instances where the drone is climbing or descending significantly.
+    df_filtered = df_unfiltered[abs(df["elevation_heading"]) < elevation_filter]
+
+    # Compute the two main azimuths (azimuth is the direction along the horizon) of the data.
+    azi1, azi2 = bimodal_azimuth(df_filtered)
     print(f"Drone appears to be flying mainly on the headings {azi1:.2f} degrees and {azi2:.2f} degrees")
-    df = df[
-        (df["azimuth_heading"].rolling(azimuth_window, center=True).mean() < azi1 + azimuth_filter)
-        & (df["azimuth_heading"] > azi1 - azimuth_filter)
-        | (df["azimuth_heading"] < azi2 + azimuth_filter) & (df["azimuth_heading"] > azi2 - azimuth_filter)
+
+    # Filter the dataframe based on the azimuth heading. This is done in two steps:
+    # First, the function calculates a rolling average of the azimuth heading over a window of azimuth_window size, and compares this with the limits (azi1 +/- azimuth_filter) and (azi2 +/- azimuth_filter).
+    # This ensures that only data where the drone is mainly flying in the direction of azi1 or azi2 (within a margin of azimuth_filter degrees) is included.
+    df_filtered = df_filtered[
+        (df_filtered["azimuth_heading"].rolling(azimuth_window, center=True).mean() < azi1 + azimuth_filter)
+        & (df_filtered["azimuth_heading"] > azi1 - azimuth_filter)
+        | (df_filtered["azimuth_heading"] < azi2 + azimuth_filter) & (df_filtered["azimuth_heading"] > azi2 - azimuth_filter)
     ]
-    return df
+
+    return df_filtered, df_unfiltered
 
 
 # this function sorts the data into rows based on azimuth switches and then filters to the biggest monotonic series of values
@@ -127,6 +123,71 @@ def monotonic_row_filter(df):
         f"Parsed a flight of {endrow-startrow} rows from {alt_dict[startrow]:.0f}m to {alt_dict[endrow]:.0f}m between the time of {df.index[0]} and {df.index[-1]}"
     )
     return df, startrow, endrow
+
+
+# an attempt at better filter for only rows of interest
+def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_tolerance=40):  # chain length is the number of consecutive points to make it a "transect", tolerances are in degrees
+
+    def apply_mask(df, major_azimuths, azimuth_tolerance, elevation_tolerance):
+        mask = df['azimuth_heading'].apply(lambda x: any([abs(x - major) <= 10 for major in major_azimuths]))
+        mask = mask & (abs(df['elevation_heading']) <= elevation_tolerance)
+        return mask
+
+    def get_true_runs(mask):
+        enumerated_mask = list(enumerate(mask))
+        groups = groupby(enumerated_mask, key=lambda x: x[1])
+        true_runs = [list(group) for key, group in groups if key]
+        return true_runs
+
+    def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=90):
+        split_runs = []
+        for run in runs:
+            last_azimuth = df.iloc[run[0][0]]['azimuth_heading']
+            current_run = [run[0]]
+            for point in run[1:]:
+                current_azimuth = df.iloc[point[0]]['azimuth_heading']
+                if abs(current_azimuth - last_azimuth) > azimuth_inversion_threshold:
+                    split_runs.append(current_run)
+                    current_run = [point]
+                else:
+                    current_run.append(point)
+                last_azimuth = current_azimuth
+            split_runs.append(current_run)
+        return split_runs
+
+    major_azimuths = bimodal_azimuth(df)
+    mask = apply_mask(df, major_azimuths, azimuth_tolerance, elevation_tolerance)
+    true_runs = get_true_runs(mask)
+    split_runs = split_runs_on_azimuth_inversion(df, true_runs)  # gets around the edge case of an azimuth inversion at start/end of flight within elevation change tolerance
+    filtered_runs = [run for run in split_runs if len(run) >= chain_length]
+    filtered_segments = [df.iloc[run[0][0]:run[-1][0] + 1] for run in filtered_runs]
+    # Here we try and make sure all the segments are parallel to the longest segment at up to n points and drop any that aren't
+    filtered_segments.sort(key=len, reverse=True)
+    reference_segment = filtered_segments[0]  # Longest segment is the reference
+    sample_indices = np.linspace(0, len(reference_segment) - 1, 10).astype(int)  # Sample the reference segment at 10 equidistant points
+    reference_samples = reference_segment.iloc[sample_indices]
+    distances = np.sqrt(np.diff(reference_segment['utm_easting'])**2 + np.diff(reference_segment['utm_northing'])**2)  # Find a good window for searching
+    window_size = 3 * np.mean(distances)
+    std_devs = []
+
+    retained_segments = [reference_segment]  # instantiate list of retained segments with the reference segment
+    for segment in filtered_segments[1:]:
+        segment_tree = KDTree(segment[['utm_easting', 'utm_northing']])  # Build a KDTree for each segment
+        segment_altitudes = []
+        for ref_point in reference_samples[['utm_easting', 'utm_northing']].values:
+            dist, idx = segment_tree.query(ref_point, distance_upper_bound=window_size)  # Find the nearest neighbor within window
+            if np.isfinite(dist):  # Exclude if there is no neighbor within the window
+                segment_altitudes.append(segment['altitude'].iloc[idx])
+            else:
+                segment_altitudes.append(np.nan)  # If there is no neighbor within the window, append nan
+        altitude_diffs = reference_samples['altitude'].values - np.array(segment_altitudes)
+        std_dev = np.nanstd(altitude_diffs)  # Compute std dev, np.nanstd ignores nan values
+        std_devs.append(std_dev)
+        if np.abs(std_dev - np.mean(std_devs)) <= 3 * np.std(std_devs):  # retain within 3 sigma
+            retained_segments.append(segment)
+
+    df_filtered = pd.concat(retained_segments)
+    return df_filtered
 
 
 # linear flight path functions

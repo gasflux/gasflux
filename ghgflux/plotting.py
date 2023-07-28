@@ -39,18 +39,28 @@ def scatter_3d(
     y: str = "utm_northing",
     z: str = "altitude",
     title: str = "Normalised methane conc. (ppm)",
+    headings: bool = False,
 ):
-    fig = px.scatter_3d(df, x=x, y=y, z=z, color=color, opacity=0.5, color_continuous_scale=styling["colorscale"])
+    if headings:
+        custom_data = [df["timestamp"], df["elevation_heading"], df["azimuth_heading"]]
+    else:
+        custom_data = [df["timestamp"]]
+    fig = px.scatter_3d(df, x=x, y=y, z=z, color=color, opacity=0.5,
+                        color_continuous_scale=styling["colorscale"],
+                        custom_data=custom_data)
+
     fig.update_traces(marker_size=4)
+
     fig.update_traces(
-        customdata=df.index,
         hovertemplate="<br>".join(
             [
                 "northing: %{x:.2f}",
                 "easting: %{y:.2f}",
                 "altitude: %{z:.2f}",
                 "CH4: %{marker.color:.2f}",
-                "Time: %{customdata}",
+                "Time: %{customdata[0]}",
+                "elevation heading: %{customdata[1]:.2f}",
+                "azimuth heading: %{customdata[2]:.2f}",
             ]
         ),
     )

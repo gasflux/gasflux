@@ -1,6 +1,7 @@
 """Functions that organise the data into standard columns in pandas dataframes. Conversion functions (e.g. WGS84 to UTM) are here but transformations take place in processing.py"""
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from . import plotting
@@ -42,6 +43,21 @@ def add_utm(df: pd.DataFrame) -> pd.DataFrame:
     gdf = gdf.to_crs(utm)
     df["utm_easting"] = gdf.geometry.x  # type: ignore
     df["utm_northing"] = gdf.geometry.y  # type: ignore
+    return df
+
+
+# add columns for drone azimuth and elevation headings
+def add_heading(df, rolling_window=1):
+    df["hor_distance"] = np.sqrt((df["utm_northing"].diff()) ** 2 + (df["utm_easting"].diff()) ** 2)
+    df["vert_distance"] = df["altitude"].diff()
+
+    df["elevation_heading"] = (
+        np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"])).rolling(rolling_window).mean()
+    )
+    df["azimuth_heading"] = (
+        np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())).rolling(rolling_window).mean()
+        % 360
+    )
     return df
 
 
