@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      .grid-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-gap: 10px;
+        height: 800px;
+      }
+
+      .grid-item.double {
+        grid-column: span 2;
+      }
+
+      .grid-item {
+        width: 100%;
+        min-width: 300px;
+      }
+
+      .grid-item iframe {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>{{title}}</h1>
+    <table>
+      <tbody>
+        {% for key, value in summary_data.items() %}
+        <tr>
+          <td>{{key}}</td>
+          <td>{{value}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="grid-container">
+      <div class="grid-item">
+        <iframe src="{{ threeD }}" frameborder="0"></iframe>
+      </div>
+      <div class="grid-item double">
+        <iframe src="{{ krig }}" frameborder="0"></iframe>
+      </div>
+      <div class="grid-item">
+        <iframe src="{{ windrose }}" frameborder="0"></iframe>
+      </div>
+      <div class="grid-item double">
+        <iframe src="{{ wind }}" frameborder="0"></iframe>
+      </div>
+      <div class="grid-item double">
+        <iframe src="{{ baseline }}" frameborder="0"></iframe>
+      </div>
+    </div>
+  </body>
+</html>
