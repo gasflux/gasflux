@@ -90,7 +90,6 @@ def heading_filter(  # requires headings to be added already
     azimuth_filter,
     azimuth_window,
     elevation_filter,
-    rolling_window=1,
 ):
     df_unfiltered = df.copy()
     # Filter out any rows where the absolute value of the elevation heading is greater than the elevation filter.
@@ -168,6 +167,8 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     reference_samples = reference_segment.iloc[sample_indices]
     distances = np.sqrt(np.diff(reference_segment['utm_easting'])**2 + np.diff(reference_segment['utm_northing'])**2)  # Find a good window for searching
     window_size = 3 * np.mean(distances)
+    if not isinstance(window_size, float):  # Check that window_size is a float
+        raise TypeError(f"Unexpected type for window_size: {type(window_size)}. Expected float.")
     std_devs = []
 
     retained_segments = [reference_segment]  # instantiate list of retained segments with the reference segment
