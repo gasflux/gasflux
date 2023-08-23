@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="ghgflux",
+    name="gasflux",
     version="0.0.1",
     author="Jamie McQuilkin",
     author_email="jamie.mcquilkin@postgrad.manchester.ac.uk",
