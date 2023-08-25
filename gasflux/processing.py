@@ -8,7 +8,6 @@ import pandas as pd
 import scipy.odr as odr
 from scipy.optimize import least_squares
 from scipy.signal import find_peaks
-from scipy.spatial import KDTree
 
 
 # function to return the start and end of the biggest monotonic series of values from a dictionary
@@ -45,20 +44,33 @@ def mCount(dict):
         return 0, 0
 
 
-# this returns a bimodal azimuth from a dataframe
-def bimodal_azimuth(df):
-    data = df["azimuth_heading"].to_numpy()
+# this returns a bimodal heading from a dataframe. minimum difference is in degrees in case the modes are right next to each other
+def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=160):
+    df = df[df['altitude'] >= min_altitude]
+    data = df[heading_col].to_numpy()
     data = data[~np.isnan(data)]
     hist, edges = np.histogram(data, bins=50)
     max_freq_idx = np.argsort(hist)[::-1][:2]
     mode1, mode2 = edges[max_freq_idx][0], edges[max_freq_idx][1]
 
-    while np.abs(mode1 - mode2) < 160:
+    while np.abs(mode1 - mode2) < min_diff:
         hist[max_freq_idx[1]] = 0
         max_freq_idx = np.argsort(hist)[::-1][:2]
         mode1, mode2 = edges[max_freq_idx][0], edges[max_freq_idx][1]
     assert 160 < np.abs(mode1 - mode2) < 200
-    return [mode1, mode2]
+    return (mode1, mode2)
+
+
+# this returns modes of slope from -90 to 90 degrees.
+def bimodal_elevation(df, heading_col="elevation_heading", min_altitude=5, max_slope=70):
+    df = df[df['altitude'] >= min_altitude]
+    data = df[heading_col].to_numpy()
+    data = np.abs(data[~np.isnan(data)])
+    data = data[data < max_slope]  # to get around the edge case where vertical movements are modal
+    hist, edges = np.histogram(data, bins=50)
+    max_freq_idx = np.argsort(hist)[::-1][:2]
+    mode = edges[max_freq_idx][0]
+    return (mode, -mode)
 
 
 def altitude_row_splitter(df):
@@ -125,17 +137,18 @@ def monotonic_row_filter(df):
 
 
 # an attempt at better filter for only rows of interest
-def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_tolerance=40):  # chain length is the number of consecutive points to make it a "transect", tolerances are in degrees
+# chain length is the number of consecutive points to make it a "transect", azimuth and elevation tolerances are in degrees; parallel_std_dev_tolerance is the std in meters of a 10-point sampled deviation from the longest segment
+# smoothing window is the number of points to smooth over for the azimuth and elevation headings. it is a median, as these tend to be single point
+def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_tolerance=40, smoothing_window=5):
 
-    def apply_mask(df, major_azimuths, azimuth_tolerance, elevation_tolerance):
-        mask = df['azimuth_heading'].apply(lambda x: any([abs(x - major) <= 10 for major in major_azimuths]))
-        mask = mask & (abs(df['elevation_heading']) <= elevation_tolerance)
-        return mask
+    def min_angular_diff_deg(x, y):
+        return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)  # deals with circular co-ordinates
 
+    # returns a list of runs that are marked true
     def get_true_runs(mask):
-        enumerated_mask = list(enumerate(mask))
-        groups = groupby(enumerated_mask, key=lambda x: x[1])
-        true_runs = [list(group) for key, group in groups if key]
+        enumerated_mask = list(enumerate(mask))  # add index numbers to mask
+        groups = groupby(enumerated_mask, key=lambda x: x[1])  # group consecutive true/false values
+        true_runs = [list(group) for key, group in groups if key]  # retain groups of True values
         return true_runs
 
     def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=90):
@@ -154,41 +167,41 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
             split_runs.append(current_run)
         return split_runs
 
-    major_azimuths = bimodal_azimuth(df)
-    mask = apply_mask(df, major_azimuths, azimuth_tolerance, elevation_tolerance)
+    # Create new columns for filtering reasons, initialized with False
+    df_removed = df.copy()
+    df_removed['filtered_by_azimuth'] = False
+    df_removed['filtered_by_elevation'] = False
+    df_removed['filtered_by_chain'] = False
+
+    # Apply azimuth filter
+    major_azi_headings = bimodal_azimuth(df, heading_col="azimuth_heading")
+    major_elev_headings = bimodal_elevation(df, heading_col="elevation_heading")
+    # Apply rolling median to azimuth and elevation headings and store them in new columns
+    df_removed['smoothed_azimuth_heading'] = df_removed['azimuth_heading'].rolling(smoothing_window, center=True).median().fillna(df_removed['azimuth_heading'])
+    df_removed['smoothed_elevation_heading'] = df_removed['elevation_heading'].rolling(smoothing_window, center=True).median().fillna(df_removed['elevation_heading'])
+    azimuth_mask = df_removed['smoothed_azimuth_heading'].apply(lambda x: any([min_angular_diff_deg(x, major) <= azimuth_tolerance for major in major_azi_headings]))
+    df_removed.loc[~azimuth_mask, 'filtered_by_azimuth'] = True
+
+    # Apply elevation filter
+    elevation_mask = df_removed['smoothed_elevation_heading'].apply(lambda x: any([min_angular_diff_deg(x, major) <= elevation_tolerance for major in major_elev_headings]))
+    df_removed.loc[~elevation_mask, 'filtered_by_elevation'] = True
+
+    # Combined mask for azimuth and elevation
+    mask = azimuth_mask & elevation_mask
+
     true_runs = get_true_runs(mask)
-    split_runs = split_runs_on_azimuth_inversion(df, true_runs)  # gets around the edge case of an azimuth inversion at start/end of flight within elevation change tolerance
-    filtered_runs = [run for run in split_runs if len(run) >= chain_length]
-    filtered_segments = [df.iloc[run[0][0]:run[-1][0] + 1] for run in filtered_runs]
-    # Here we try and make sure all the segments are parallel to the longest segment at up to n points and drop any that aren't
-    filtered_segments.sort(key=len, reverse=True)
-    reference_segment = filtered_segments[0]  # Longest segment is the reference
-    sample_indices = np.linspace(0, len(reference_segment) - 1, 10).astype(int)  # Sample the reference segment at 10 equidistant points
-    reference_samples = reference_segment.iloc[sample_indices]
-    distances = np.sqrt(np.diff(reference_segment['utm_easting'])**2 + np.diff(reference_segment['utm_northing'])**2)  # Find a good window for searching
-    window_size = 3 * np.mean(distances)
-    if not isinstance(window_size, float):  # Check that window_size is a float
-        raise TypeError(f"Unexpected type for window_size: {type(window_size)}. Expected float.")
-    std_devs = []
+    split_runs = split_runs_on_azimuth_inversion(df, true_runs)
+    chain_mask = [len(run) >= chain_length for run in split_runs]
+    chain_filtered_runs = [run for run, filter_by_chain in zip(split_runs, chain_mask) if filter_by_chain]
+    chain_filtered_indices = [point[0] for run in chain_filtered_runs for point in run]
+    df_removed.loc[df_removed.index.difference(chain_filtered_indices), 'filtered_by_chain'] = True
 
-    retained_segments = [reference_segment]  # instantiate list of retained segments with the reference segment
-    for segment in filtered_segments[1:]:
-        segment_tree = KDTree(segment[['utm_easting', 'utm_northing']])  # Build a KDTree for each segment
-        segment_altitudes = []
-        for ref_point in reference_samples[['utm_easting', 'utm_northing']].values:
-            dist, idx = segment_tree.query(ref_point, distance_upper_bound=window_size)  # Find the nearest neighbor within window
-            if np.isfinite(dist):  # Exclude if there is no neighbor within the window
-                segment_altitudes.append(segment['altitude'].iloc[idx])
-            else:
-                segment_altitudes.append(np.nan)  # If there is no neighbor within the window, append nan
-        altitude_diffs = reference_samples['altitude'].values - np.array(segment_altitudes)
-        std_dev = np.nanstd(altitude_diffs)  # Compute std dev, np.nanstd ignores nan values
-        std_devs.append(std_dev)
-        if np.abs(std_dev - np.mean(std_devs)) <= 3 * np.std(std_devs):  # retain within 3 sigma
-            retained_segments.append(segment)
+    filtered_segments = [df.iloc[run[0][0]:run[-1][0] + 1] for run in chain_filtered_runs]
 
-    df_filtered = pd.concat(retained_segments)
-    return df_filtered
+    df_retained = pd.concat(filtered_segments)
+    df_removed = df_removed[~df_removed.index.isin(df_retained.index)]
+
+    return df_removed, df_retained
 
 
 # linear flight path functions
