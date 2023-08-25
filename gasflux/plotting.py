@@ -61,6 +61,7 @@ def scatter_3d(
                 "Time: %{customdata[0]}",
                 "elevation heading: %{customdata[1]:.2f}",
                 "azimuth heading: %{customdata[2]:.2f}",
+                "idx: %{pointNumber}",
             ]
         ),
     )
