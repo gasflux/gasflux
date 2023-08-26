@@ -10,40 +10,6 @@ from scipy.optimize import least_squares
 from scipy.signal import find_peaks
 
 
-# function to return the start and end of the biggest monotonic series of values from a dictionary
-def mCount(dict):
-    poscount = 0
-    negcount = 0
-    max_pos_count = 0
-    max_pos_row = 0
-    max_neg_count = 0
-    max_neg_row = 0
-    pos_start = 0
-    neg_start = 0
-    for i in range(1, len(dict)):
-        if dict[i] >= dict[i - 1]:
-            poscount += 1
-            negcount = 0
-        elif dict[i] < dict[i - 1]:
-            negcount += 1
-            poscount = 0
-        if max_pos_count < poscount:
-            max_pos_count = poscount
-            max_pos_row = i
-            pos_start = i - poscount
-        elif max_neg_count < negcount:
-            max_neg_count = negcount
-            max_neg_row = i
-            neg_start = i - negcount
-    if max_pos_count > 0 or max_neg_count > 0:
-        if max_pos_count >= max_neg_count:
-            return pos_start, max_pos_row
-        elif max_pos_count < max_neg_count:
-            return neg_start, max_neg_row
-    else:
-        return 0, 0
-
-
 # this returns a bimodal heading from a dataframe. minimum difference is in degrees in case the modes are right next to each other
 def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=160):
     df = df[df['altitude'] >= min_altitude]
@@ -73,7 +39,7 @@ def bimodal_elevation(df, heading_col="elevation_heading", min_altitude=5, max_s
     return (mode, -mode)
 
 
-def altitude_row_splitter(df):
+def altitude_transect_splitter(df):
     heights, bin_edges = np.histogram(df["altitude"], bins=40)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     peaks, properties = find_peaks(heights)
@@ -90,10 +56,10 @@ def altitude_row_splitter(df):
     return df, fig
 
 
-def add_rows(df):  # requires headings
-    df["row"] = 0  # split into lines by incrementing based on azimuth heading switches
-    df.loc[df["azimuth_heading"].diff().abs() > 90, "row"] = 1
-    df["row"] = df["row"].cumsum()
+def add_transect_azimuth_switches(df):  # requires headings
+    df["transect"] = 0  # split into lines by incrementing based on azimuth heading switches
+    df.loc[df["azimuth_heading"].diff().abs() > 150, "transect"] = 1
+    df["transect"] = df["transect"].cumsum()
     return df
 
 
@@ -104,7 +70,7 @@ def heading_filter(  # requires headings to be added already
     elevation_filter,
 ):
     df_unfiltered = df.copy()
-    # Filter out any rows where the absolute value of the elevation heading is greater than the elevation filter.
+    # Filter out any transects where the absolute value of the elevation heading is greater than the elevation filter.
     # This removes data that doesn't fall within a flat altitude transect as it excludes instances where the drone is climbing or descending significantly.
     df_filtered = df_unfiltered[abs(df["elevation_heading"]) < elevation_filter]
 
@@ -124,24 +90,94 @@ def heading_filter(  # requires headings to be added already
     return df_filtered, df_unfiltered
 
 
-# this function sorts the data into rows based on azimuth switches and then filters to the biggest monotonic series of values
-def monotonic_row_filter(df):
-    df = add_rows(df)
-    alt_dict = dict(df.groupby("row")["altitude"].mean())
-    startrow, endrow = mCount(alt_dict)  # type: ignore
-    df = df[(df["row"] >= startrow) & (df["row"] <= endrow)]  # filter to the biggest monotonic series of values
+# function to return the start and end of the biggest monotonic series of values from a dictionary
+def mCount_max(dict):
+    poscount = 0
+    negcount = 0
+    max_pos_count = 0
+    max_pos_transect = 0
+    max_neg_count = 0
+    max_neg_transect = 0
+    pos_start = 0
+    neg_start = 0
+    for i in range(1, len(dict)):
+        if dict[i] >= dict[i - 1]:
+            poscount += 1
+            negcount = 0
+        elif dict[i] < dict[i - 1]:
+            negcount += 1
+            poscount = 0
+        if max_pos_count < poscount:
+            max_pos_count = poscount
+            max_pos_transect = i
+            pos_start = i - poscount
+        elif max_neg_count < negcount:
+            max_neg_count = negcount
+            max_neg_transect = i
+            neg_start = i - negcount
+    if max_pos_count > 0 or max_neg_count > 0:
+        if max_pos_count >= max_neg_count:
+            return pos_start, max_pos_transect
+        elif max_pos_count < max_neg_count:
+            return neg_start, max_neg_transect
+    else:
+        return 0, 0
+
+
+# this function sorts the data into transects based on azimuth switches and then filters to the biggest monotonic series of values
+def largest_monotonic_transect_series(df):
+    df = add_transect_azimuth_switches(df)  # heading switches
+    alt_dict = dict(df.groupby("transect")["altitude"].mean())
+    starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
+    df = df[(df["transect"] >= starttransect) & (df["transect"] <= endtransect)]  # filter to the biggest monotonic series of values
     print(
-        f"Parsed a flight of {endrow-startrow} rows from {alt_dict[startrow]:.0f}m to {alt_dict[endrow]:.0f}m between the time of {df.index[0]} and {df.index[-1]}"
+        f"Parsed a flight of {endtransect-starttransect} transects from {alt_dict[starttransect]:.0f}m to {alt_dict[endtransect]:.0f}m between the time of {df.index[0]} and {df.index[-1]}"
     )
-    return df, startrow, endrow
+    return df, starttransect, endtransect
 
 
-# an attempt at better filter for only rows of interest
+# this function takes a pre-processed input of some transects and returns groups of transects in monotonic sequences according to altitude
+# it's advisable to have each group also use the last transect from the previous group
+def monotonic_transect_groups(df):
+    df = add_transect_azimuth_switches(df)
+    alt_dict = dict(df.groupby("transect")["altitude"].mean())
+
+    group_dict = {}
+    previous_altitude = None
+    current_group = 1
+    previous_trend = None
+    first_transect_in_series = True
+
+    for transect, altitude in alt_dict.items():
+        if previous_altitude is None:
+            group_dict[transect] = f'Group_{current_group}'
+        else:
+            if altitude == previous_altitude:
+                raise ValueError("Error: altitude is the same as the previous transect")
+            elif altitude > previous_altitude:
+                current_trend = "ascending"
+            else:
+                current_trend = "descending"
+
+            if current_trend != previous_trend and previous_trend is not None and not first_transect_in_series:
+                current_group += 1  # Increment group counter
+                first_transect_in_series = True
+            if current_trend == previous_trend or previous_trend is None:
+                first_transect_in_series = False  # this logic deals with the case where someone flies up, flies down one transect and then starts flying up again
+            group_dict[transect] = f'Group_{current_group}'
+            previous_trend = current_trend
+        previous_altitude = altitude
+    df['group'] = df['transect'].map(group_dict)
+
+    return df, group_dict
+
+
+# an attempt at better filter for only transects of interest
 # chain length is the number of consecutive points to make it a "transect", azimuth and elevation tolerances are in degrees; parallel_std_dev_tolerance is the std in meters of a 10-point sampled deviation from the longest segment
 # smoothing window is the number of points to smooth over for the azimuth and elevation headings. it is a median, as these tend to be single point
 def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_tolerance=40, smoothing_window=5):
 
-    def min_angular_diff_deg(x, y):
+    def min_angular_diff_deg(x: float, y: float):
         return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)  # deals with circular co-ordinates
 
     # returns a list of runs that are marked true
@@ -240,9 +276,9 @@ def flatten_linear_plane(df: pd.DataFrame, distance_filter) -> tuple[pd.DataFram
     return df, plane_angle
 
 
-# function to set the edges of the linear plane based on not the top and bottom rows
-def x_filter(df, startrow, endrow, x="x", y="z"):
-    bb_df = df[(df["row"] > startrow) & (df["row"] < endrow)]
+# function to set the edges of the linear plane based on not the top and bottom transects
+def x_filter(df, starttransect, endtransect, x="x", y="z"):
+    bb_df = df[(df["transect"] > starttransect) & (df["transect"] < endtransect)]
     df = df[(df[x] >= bb_df[x].min()) & (df[x] <= bb_df[x].max())]
     return df
 
