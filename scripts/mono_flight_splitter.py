@@ -58,8 +58,7 @@ def main(target_dir, search_string, output_dir=None):
             last_group_trend = current_group_trend
             unique_transects = len(group_df['transect'].unique())
             if unique_transects < 3:
-                print(colorama.Fore.RED +
-                      f'Not saving {group} - not enough transects ({unique_transects} transects at {formatted_avg_altitudes}m)')
+                print(colorama.Fore.RED + f'Not saving {group} - not enough transects ({unique_transects} transects at {formatted_avg_altitudes}m)')
             else:
                 if output_dir:
                     output_path = Path(Path(
