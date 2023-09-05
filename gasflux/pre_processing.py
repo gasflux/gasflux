@@ -34,16 +34,18 @@ def timestamp_from_four_columns(df):
 
 
 # add UTM from latitudes and longitudes
-def add_utm(df: pd.DataFrame) -> pd.DataFrame:
+def add_utm(df: pd.DataFrame) -> gpd.GeoDataFrame:
     gdf = gpd.GeoDataFrame(  # type: ignore
         df,
         geometry=gpd.points_from_xy(df["longitude"], df["latitude"], crs="EPSG:4326"),
     )
     utm = gdf.estimate_utm_crs()
     gdf = gdf.to_crs(utm)
-    df["utm_easting"] = gdf.geometry.x  # type: ignore
-    df["utm_northing"] = gdf.geometry.y  # type: ignore
-    return df
+    if not isinstance(gdf, gpd.GeoDataFrame):
+        raise TypeError("Failed to reproject to a GeoDataFrame")
+    gdf["utm_easting"] = gdf.geometry.x  # type: ignore
+    gdf["utm_northing"] = gdf.geometry.y  # type: ignore
+    return gdf
 
 
 # add columns for drone azimuth and elevation headings
