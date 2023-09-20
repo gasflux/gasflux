@@ -8,6 +8,7 @@ import pandas as pd
 import scipy.odr as odr
 from scipy.optimize import least_squares
 from scipy.signal import find_peaks
+from scipy.stats import circmean
 
 
 # this returns a bimodal heading from a dataframe. minimum difference is in degrees in case the modes are right next to each other
@@ -187,14 +188,14 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
         true_runs = [list(group) for key, group in groups if key]  # retain groups of True values
         return true_runs
 
-    def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=90):
+    def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=120):
         split_runs = []
         for run in runs:
-            last_azimuth = df.iloc[run[0][0]]['azimuth_heading']
+            last_azimuth = df.iloc[run[0][0]]['smoothed_azimuth_heading']
             current_run = [run[0]]
             for point in run[1:]:
-                current_azimuth = df.iloc[point[0]]['azimuth_heading']
-                if abs(current_azimuth - last_azimuth) > azimuth_inversion_threshold:
+                current_azimuth = df.iloc[point[0]]['smoothed_azimuth_heading']
+                if min_angular_diff_deg(current_azimuth, last_azimuth) > azimuth_inversion_threshold:
                     split_runs.append(current_run)
                     current_run = [point]
                 else:
@@ -213,8 +214,8 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     major_azi_headings = bimodal_azimuth(df, heading_col="azimuth_heading")
     major_elev_headings = bimodal_elevation(df, heading_col="elevation_heading")
     # Apply rolling median to azimuth and elevation headings and store them in new columns
-    df_removed['smoothed_azimuth_heading'] = df_removed['azimuth_heading'].rolling(smoothing_window, center=True).median().fillna(df_removed['azimuth_heading'])
-    df_removed['smoothed_elevation_heading'] = df_removed['elevation_heading'].rolling(smoothing_window, center=True).median().fillna(df_removed['elevation_heading'])
+    df_removed['smoothed_azimuth_heading'] = df_removed['azimuth_heading'].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed['azimuth_heading'], inplace=False)
+    df_removed['smoothed_elevation_heading'] = df_removed['elevation_heading'].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed['elevation_heading'], inplace=False)
     azimuth_mask = df_removed['smoothed_azimuth_heading'].apply(lambda x: any([min_angular_diff_deg(x, major) <= azimuth_tolerance for major in major_azi_headings]))
     df_removed.loc[~azimuth_mask, 'filtered_by_azimuth'] = True
 
@@ -226,13 +227,13 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     mask = azimuth_mask & elevation_mask
 
     true_runs = get_true_runs(mask)
-    split_runs = split_runs_on_azimuth_inversion(df, true_runs)
+    split_runs = split_runs_on_azimuth_inversion(df_removed, true_runs)
     chain_mask = [len(run) >= chain_length for run in split_runs]
     chain_filtered_runs = [run for run, filter_by_chain in zip(split_runs, chain_mask) if filter_by_chain]
     chain_filtered_indices = [point[0] for run in chain_filtered_runs for point in run]
     df_removed.loc[df_removed.index.difference(chain_filtered_indices), 'filtered_by_chain'] = True
 
-    filtered_segments = [df.iloc[run[0][0]:run[-1][0] + 1] for run in chain_filtered_runs]
+    filtered_segments = [df_removed.iloc[run[0][0]:run[-1][0] + 1] for run in chain_filtered_runs]
 
     df_retained = pd.concat(filtered_segments)
     df_removed = df_removed[~df_removed.index.isin(df_retained.index)]

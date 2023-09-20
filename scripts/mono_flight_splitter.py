@@ -24,7 +24,10 @@ def main(target_dir, search_string, output_dir=None):
 
     for path, df in df_list.items():
         print(colorama.Fore.WHITE + '----------------------------------------')
-        df, groupdict = gasflux.processing.monotonic_transect_groups(df)
+        # pause on 14_13_01 contains in str
+        if str(path).find('14_13_01') != -1:
+            print("paisley")
+        df, groupdict = gasflux.processing.monotonic_transect_groups(df, tolerance=120)
         last_transect = None
         last_group_trend = None
         for group in df['group'].unique():
