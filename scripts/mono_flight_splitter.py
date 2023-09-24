@@ -33,7 +33,7 @@ def main(target_dir, search_string, output_dir=None):
         for group in df['group'].unique():
             # leaving this out for now as the group folder is a good identifier
             # if len(df['group'].unique()) == 1:
-            #     print(colorama.Fore.RED + f'Skipping{Path(path).name} - only one group')
+            #     print(colorama.Fore.RED + f'Skipping{path.name} - only one group')
             #     continue
             group_df = df[df['group'] == group]
             avg_altitudes = group_df.groupby(
@@ -63,12 +63,13 @@ def main(target_dir, search_string, output_dir=None):
             if unique_transects < 3:
                 print(colorama.Fore.RED + f'Not saving {group} - not enough transects ({unique_transects} transects at {formatted_avg_altitudes}m)')
             else:
+                path = Path(path)
                 if output_dir:
                     output_path = Path(Path(
-                        output_dir) / f"{Path(path).parents[1].name}" / f"{Path(path).parent.name}_{group}" / f"{Path(path).stem}_{group}.csv")
+                        output_dir) / f"{path.parents[1].name}" / f"{path.parent.name}_{group}" / f"{path.stem}_{group}.csv")
                 else:
-                    output_path = Path(Path(
-                        path).parent.parent / f"{Path(path).parent.name}_{group}" / f"{Path(path).stem}_{group}.csv")
+                    # assuming in date and time folder
+                    output_path = Path(path.parent.parent.parent.parent / "splits" / path.parent.parent.name / f"{path.parent.name}_{group}" / f"{path.stem}_{group}.csv")
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 group_df.to_csv(output_path, index=False)
                 print(colorama.Fore.GREEN + f'wrote {unique_transects} monotonic transects at {formatted_avg_altitudes}m to \n'
@@ -82,6 +83,6 @@ if __name__ == '__main__':
     parser.add_argument(
         '--search-string', help='the string to search for in the directory', default='*filtered.csv')
     parser.add_argument(
-        '--output-dir', help='the metadirectory to save the date/time/csvs to', default='survey/analysis/splits')
+        '--output-dir', help='the metadirectory to save the date/time/csvs to', required=False)
     args = parser.parse_args()
     main(args.target_dir, args.search_string, args.output_dir)
