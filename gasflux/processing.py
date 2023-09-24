@@ -57,9 +57,9 @@ def altitude_transect_splitter(df):
     return df, fig
 
 
-def add_transect_azimuth_switches(df):  # requires headings
+def add_transect_azimuth_switches(df, tolerance=150):  # requires headings
     df["transect"] = 0  # split into lines by incrementing based on azimuth heading switches
-    df.loc[df["azimuth_heading"].diff().abs() > 150, "transect"] = 1
+    df.loc[df["azimuth_heading"].diff().abs() > tolerance, "transect"] = 1
     df["transect"] = df["transect"].cumsum()
     return df
 
@@ -139,8 +139,8 @@ def largest_monotonic_transect_series(df):
 
 # this function takes a pre-processed input of some transects and returns groups of transects in monotonic sequences according to altitude
 # it's advisable to have each group also use the last transect from the previous group
-def monotonic_transect_groups(df):
-    df = add_transect_azimuth_switches(df)
+def monotonic_transect_groups(df, tolerance=150):
+    df = add_transect_azimuth_switches(df, tolerance)
     alt_dict = dict(df.groupby("transect")["altitude"].mean())
 
     group_dict = {}

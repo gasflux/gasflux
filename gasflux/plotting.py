@@ -65,7 +65,8 @@ def scatter_3d(
             ]
         ),
     )
-    fig.update_layout(coloraxis_colorbar=dict(title=title))
+    fig.update_layout(coloraxis_colorbar=dict(title=title), scene=dict(aspectmode='cube'))
+
     return fig
 
 
