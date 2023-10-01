@@ -1,6 +1,8 @@
 flake8
 isort
 mypy
+pigar
+pre-commit
 pre-commit
 pytest
 safety

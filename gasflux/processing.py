@@ -57,10 +57,13 @@ def altitude_transect_splitter(df):
     return df, fig
 
 
-def add_transect_azimuth_switches(df, tolerance=150):  # requires headings
-    df["transect"] = 0  # split into lines by incrementing based on azimuth heading switches
-    df.loc[df["azimuth_heading"].diff().abs() > tolerance, "transect"] = 1
-    df["transect"] = df["transect"].cumsum()
+def add_transect_azimuth_switches(df, tolerance=130, min_transect_length=200):
+    df["angular_diff"] = df["azimuth_heading"].combine(df["azimuth_heading"].shift(1), min_angular_diff_deg)
+    df["transect"] = (df["angular_diff"] > tolerance).cumsum()
+    counts = df['transect'].value_counts()
+    short_transects = counts[counts < min_transect_length].index
+    df['transect'].replace(short_transects, short_transects - 1, inplace=True)
+    df['transect'] = df['transect'].replace(dict(zip(sorted(df['transect'].unique()), range(df['transect'].nunique()))))
     return df
 
 
@@ -139,7 +142,7 @@ def largest_monotonic_transect_series(df):
 
 # this function takes a pre-processed input of some transects and returns groups of transects in monotonic sequences according to altitude
 # it's advisable to have each group also use the last transect from the previous group
-def monotonic_transect_groups(df, tolerance=150):
+def monotonic_transect_groups(df, tolerance=120):
     df = add_transect_azimuth_switches(df, tolerance)
     alt_dict = dict(df.groupby("transect")["altitude"].mean())
 
@@ -173,13 +176,21 @@ def monotonic_transect_groups(df, tolerance=150):
     return df, group_dict
 
 
+def min_angular_diff_deg(x: float, y: float):
+    return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)  # deals with circular co-ordinates
+
 # an attempt at better filter for only transects of interest
 # chain length is the number of consecutive points to make it a "transect", azimuth and elevation tolerances are in degrees; parallel_std_dev_tolerance is the std in meters of a 10-point sampled deviation from the longest segment
 # smoothing window is the number of points to smooth over for the azimuth and elevation headings. it is a median, as these tend to be single point
-def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_tolerance=40, smoothing_window=5):
 
-    def min_angular_diff_deg(x: float, y: float):
-        return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)  # deals with circular co-ordinates
+
+def smooth_heading(df, heading_column, smoothing_window=5):
+    smoothed_heading = df[heading_column].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True)
+    df[f'smoothed_{heading_column}'] = smoothed_heading.fillna(df[heading_column], inplace=False)
+    return df
+
+
+def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_tolerance=40, smoothing_window=5):
 
     # returns a list of runs that are marked true
     def get_true_runs(mask):
@@ -188,7 +199,7 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
         true_runs = [list(group) for key, group in groups if key]  # retain groups of True values
         return true_runs
 
-    def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=120):
+    def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=120):  # TODO - replace with the general function
         split_runs = []
         for run in runs:
             last_azimuth = df.iloc[run[0][0]]['smoothed_azimuth_heading']
@@ -214,8 +225,8 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     major_azi_headings = bimodal_azimuth(df, heading_col="azimuth_heading")
     major_elev_headings = bimodal_elevation(df, heading_col="elevation_heading")
     # Apply rolling median to azimuth and elevation headings and store them in new columns
-    df_removed['smoothed_azimuth_heading'] = df_removed['azimuth_heading'].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed['azimuth_heading'], inplace=False)
-    df_removed['smoothed_elevation_heading'] = df_removed['elevation_heading'].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed['elevation_heading'], inplace=False)
+    df_removed = smooth_heading(df_removed, 'azimuth_heading', smoothing_window)
+    df_removed = smooth_heading(df_removed, 'elevation_heading', smoothing_window)
     azimuth_mask = df_removed['smoothed_azimuth_heading'].apply(lambda x: any([min_angular_diff_deg(x, major) <= azimuth_tolerance for major in major_azi_headings]))
     df_removed.loc[~azimuth_mask, 'filtered_by_azimuth'] = True
 
