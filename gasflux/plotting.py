@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import simplekml
 from plotly.subplots import make_subplots
+from scipy.spatial.distance import euclidean
 
 from . import processing
 
@@ -146,7 +147,19 @@ def time_series(df: pd.DataFrame, y: str = "ch4", y2=None, color=None, split=Non
     return fig
 
 
-def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series):
+def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series, centroidcolor=False):
+    def find_color_point(df):
+        lower, upper = df[y].quantile([0.2, 0.8])
+        df_middle_60 = df[(df[y] >= lower) & (df[y] <= upper)].copy()
+        centroid = (df_middle_60["Easting"].mean(), df_middle_60["Northing"].mean())
+        df_middle_60['distance_to_centroid'] = df.apply(
+            lambda row: euclidean((row["Easting"], row["Northing"]), centroid), axis=1)
+        most_distant_point = df_middle_60.loc[df_middle_60['distance_to_centroid'].idxmax()]
+        most_distant_point_coords = (most_distant_point["Easting"], most_distant_point["Northing"])
+        df['distance_to_most_distant'] = df.apply(
+            lambda row: euclidean((row["Easting"], row["Northing"]), most_distant_point_coords), axis=1)
+        return df
+
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     ymin = df[y].min()
     ymax = df[y].max()
@@ -156,7 +169,12 @@ def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Seri
     df["normalised"] = df[y] - bkg
     fig.update_yaxes(range=ylim, secondary_y=False, title_text="Sensor CH4 (ppm)")
     fig.update_yaxes(range=y2lim, secondary_y=True, title_text="Normalised CH4 (ppm)")
-    fig.add_scatter(x=df.index, y=df[y], opacity=0.3, name="Raw Data")
+    if centroidcolor:
+        df = find_color_point(df)
+        fig.add_scatter(x=df.index, y=df[y], mode='markers', opacity=0.7, name="Raw Data",
+                        marker=dict(color=df['distance_to_most_distant'], colorscale='Viridis'))
+    else:
+        fig.add_scatter(x=df.index, y=df[y], opacity=0.5, name="Raw Data", mode="lines")
     fig.add_scatter(x=df.index, y=bkg, mode="lines", name="Fitted Baseline", line=dict(dash="dash"))
     fig.add_scatter(x=df.index, y=df["normalised"], yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5)
     fig.add_scatter(x=signal.index, y=signal.values, yaxis="y2", name="Signal Points", mode="markers", opacity=0.5)

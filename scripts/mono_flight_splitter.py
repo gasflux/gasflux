@@ -24,9 +24,6 @@ def main(target_dir, search_string, output_dir=None):
 
     for path, df in df_list.items():
         print(colorama.Fore.WHITE + '----------------------------------------')
-        # pause on 14_13_01 contains in str
-        if str(path).find('14_13_01') != -1:
-            print("paisley")
         df, groupdict = gasflux.processing.monotonic_transect_groups(df, tolerance=120)
         last_transect = None
         last_group_trend = None
@@ -51,7 +48,7 @@ def main(target_dir, search_string, output_dir=None):
             is_monotonic = np.all(np.diff(avg_altitudes) > 0) or np.all(
                 np.diff(avg_altitudes) < 0)
             if not is_monotonic:  # exception
-                exit(f'group {group} is not monotonic - check the code!')
+                print(f'group {group} is not monotonic - check the code!')
             formatted_avg_altitudes = ", ".join(
                 [f"{alt:.1f}" for alt in avg_altitudes])
             # do it where transect is the maximum transect number
