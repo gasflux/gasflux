@@ -38,7 +38,7 @@ def scatter_3d(
     color: str = "ch4",
     x: str = "utm_easting",
     y: str = "utm_northing",
-    z: str = "altitude",
+    z: str = "altitude_ato",
     title: str = "Normalised methane conc. (ppm)",
     headings: bool = False,
 ):
@@ -74,7 +74,7 @@ def scatter_3d(
 def scatter_2d(
     df: pd.DataFrame,
     x: str = "centred_azimuth",
-    y: str = "altitude",
+    y: str = "altitude_ato",
     color: str = "ch4_normalised",
     **kwargs,
 ):
@@ -92,13 +92,29 @@ def scatter_2d(
         hovertemplate="<br>".join(
             [
                 "x: %{x:.2f}",
-                "altitude: %{y:.2f}",
+                "altitude ATO: %{y:.2f}",
                 "CH4: %{marker.color:.2f}",
                 "Time: %{customdata}",
             ]
         ),
     )
 
+    return fig
+
+
+def scatter_3d_filter(df, lon="longitude", lat="latitude", alt="altitude_ato", color="predictions"):
+    fig = go.Figure(data=[go.Scatter3d(
+        x=df[lon],
+        y=df[lat],
+        z=df[alt],
+        mode='markers',
+        marker=dict(
+            size=2,
+            color=df[color],  # color based on predictions
+            colorscale='Viridis',
+            opacity=0.8
+        )
+    )])
     return fig
 
 
@@ -458,12 +474,12 @@ def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
     return fig
 
 
-def slice_grid(df):
+def slice_grid(df, altitude="altitude_ato"):
     fig, ax = plt.subplots(figsize=(20, 10))
     for i in range(df["slice"].max() - df["slice"].min() + 1):  # zero indexed
         df_slice = df[df["slice"] == i]
-        ymin = df_slice["altitude"].min()
-        ymax = df_slice["altitude"].max()
+        ymin = df_slice[altitude].min()
+        ymax = df_slice[altitude].max()
         x = sorted(df_slice["circumference_distance"].values)
         y = [ymin, ymax]
         xx, yy = np.meshgrid(x, y)
@@ -472,12 +488,20 @@ def slice_grid(df):
         ax.pcolormesh(
             xx, yy, zz, cmap="viridis", shading="nearest", clim=(df["ch4_kg_h_m2"].min(), df["ch4_kg_h_m2"].max())
         )
-        ax.set_ylim(df["altitude"].min(), df["altitude"].max())
+        ax.set_ylim(df[altitude].min(), df[altitude].max())
     plt.axis("scaled")
     return fig
 
 
-def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudemode: str):
+def create_kml_file(data: pd.DataFrame,
+                    output_file: str,
+                    column: str,
+                    altitudemode: str,  # Literal("absolute"|"relativeToGround"),
+                    longitude_column: str = "longitude",
+                    latitude_column: str = "latitude",
+                    altitude_column: str = "altitude",
+                    concentration_unit: str = "ppm"
+                    ):
     kml = simplekml.Kml()
 
     min = data[column].min()
@@ -498,10 +522,10 @@ def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudem
         col_normalized = (row[column] - min) / (max - min)
         color = mcolors.rgb2hex(cmap(col_normalized))
 
-        pnt = kml.newpoint(coords=[(row["longitude"], row["latitude"], row["altitude"])], altitudemode=altitudemode)
+        pnt = kml.newpoint(coords=[(row[longitude_column], row[latitude_column], row[altitude_column])], altitudemode=altitudemode)
         pnt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
         pnt.iconstyle.color = simplekml.Color.rgb(int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16))
-        pnt.iconstyle.scale = 0.6
-        pnt.description = f"Concentration: {row[column]} ppm"
+        pnt.iconstyle.scale = 1
+        pnt.description = f"Concentration: {row[column]} {concentration_unit}"
 
     kml.save(output_file)
