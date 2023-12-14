@@ -13,7 +13,7 @@ from scipy.stats import circmean
 
 # this returns a bimodal heading from a dataframe. minimum difference is in degrees in case the modes are right next to each other
 def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=160):
-    df = df[df['altitude'] >= min_altitude]
+    df = df[df['altitude_ato'] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = data[~np.isnan(data)]
     hist, edges = np.histogram(data, bins=50)
@@ -30,7 +30,7 @@ def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=
 
 # this returns modes of slope from -90 to 90 degrees.
 def bimodal_elevation(df, heading_col="elevation_heading", min_altitude=5, max_slope=70):
-    df = df[df['altitude'] >= min_altitude]
+    df = df[df['altitude_ato'] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = np.abs(data[~np.isnan(data)])
     data = data[data < max_slope]  # to get around the edge case where vertical movements are modal
