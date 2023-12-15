@@ -1,41 +1,52 @@
+import os
+
 import joblib
 import pandas as pd
-import plotting
 
-# Load the model
-model = joblib.load('model.pkl')
+from . import plotting
+
+model = None
+# Lazy loading: Load the model only if it hasn't been loaded yet
 
 
-def make_prediction(df: pd.DataFrame, azimuth_heading='azimuth_heading', elevation_heading='elevation_heading',
-                    altitude_ato='altitude_ato', idx='idx', percent_complete='percent_complete',
-                    horiz_spd='airdata.horiz_spd', z_spd='airdata.z_spd', longitude='airdata.longitude',
-                    latitude='airdata.latitude', flight='flight'):
+def load_model():
+    global model
+    if model is None:
+        default_model_path = os.path.join(os.path.dirname(__file__), 'resources/model.pkl')
+        model_file_path = os.getenv("GASFLUX_MODEL_PATH", default_model_path)
+        try:
+            model = joblib.load(model_file_path)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Model file not found at {model_file_path}. Please check the file path.")
+        except Exception as e:
+            raise Exception(f"An error occurred while loading the model: {str(e)}")
+
+    return model
+
+
+def make_prediction(df: pd.DataFrame, elevation_heading='elevation_heading',
+                    altitude_ato='altitude_ato',
+                    horiz_spd='horiz_spd', z_spd='z_spd'):
     """
     Make predictions based on the input DataFrame and add them to the DataFrame.
-    :param df: DataFrame containing the input data.
-    :param azimuth_heading: Column name for azimuth_heading.
-    :param elevation_heading: Column name for elevation_heading.
-    :param altitude_ato: Column name for altitude_ato.
-    :param idx: Column name for idx.
-    :param percent_complete: Column name for percent_complete.
-    :param horiz_spd: Column name for horizontal speed.
-    :param z_spd: Column name for z speed.
-    :param longitude: Column name for longitude.
-    :param latitude: Column name for latitude.
-    :param flight: Column name for flight.
-    :return: DataFrame with added predictions column.
+    :param df: DataFrame containing the required features
+    :param azimuth_heading: Name of the column containing the azimuth heading
+    :param elevation_heading: Name of the column containing the elevation heading
+    :param altitude_ato: Name of the column containing the altitude above take-off
+    :param idx: Name of the column containing the index
     """
-
+    model = load_model()
     # Ensure the DataFrame contains all the required features
-    required_features = [azimuth_heading, elevation_heading, altitude_ato, idx,
-                         percent_complete, horiz_spd, z_spd]
+    required_features = [elevation_heading, altitude_ato, horiz_spd, z_spd]
     if not all(feature in df.columns for feature in required_features):
-        raise ValueError("DataFrame is missing one or more required features.")
+        missing_features = [feature for feature in required_features if feature not in df.columns]
+        raise ValueError(f"DataFrame is missing (or mislabelled) the following required features: {missing_features}")
+    # make idx col if not present
+    if 'idx' not in df.columns:
+        df['idx'] = df.index
+    cols_for_model = ['elevation_heading', 'altitude_ato', 'idx', 'horiz_spd', 'z_spd']
+    predictions = model.predict(df[cols_for_model])
 
-    # Make predictions using the specified columns
-    predictions = model.predict(df[required_features])
-
-    # Add predictions to the DataFrame
     df['predictions'] = predictions
     fig = plotting.scatter_3d_filter(df)
 
