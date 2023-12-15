@@ -520,7 +520,7 @@ def create_kml_file(data: pd.DataFrame,
 
     for index, row in data.iterrows():
         col_normalized = (row[column] - min) / (max - min)
-        color = mcolors.rgb2hex(cmap(col_normalized))
+        color = mcolors.rgb2hex(cmap(col_normalized))  # type: ignore
 
         pnt = kml.newpoint(coords=[(row[longitude_column], row[latitude_column], row[altitude_column])], altitudemode=altitudemode)
         pnt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
