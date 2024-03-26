@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import simplekml
 from plotly.subplots import make_subplots
-from scipy.spatial.distance import euclidean
 
 from . import processing
 
@@ -57,7 +56,7 @@ def scatter_3d(
             [
                 "northing: %{x:.2f}",
                 "easting: %{y:.2f}",
-                "altitude: %{z:.2f}",
+                "altitude_ato: %{z:.2f}",
                 "CH4: %{marker.color:.2f}",
                 "Time: %{customdata[0]}",
                 "elevation heading: %{customdata[1]:.2f}",
@@ -66,8 +65,7 @@ def scatter_3d(
             ]
         ),
     )
-    fig.update_layout(coloraxis_colorbar=dict(title=title), scene=dict(aspectmode='cube'))
-
+    fig.update_layout(coloraxis_colorbar=dict(title=title))
     return fig
 
 
@@ -92,29 +90,13 @@ def scatter_2d(
         hovertemplate="<br>".join(
             [
                 "x: %{x:.2f}",
-                "altitude ATO: %{y:.2f}",
+                "altitude_ato: %{y:.2f}",
                 "CH4: %{marker.color:.2f}",
                 "Time: %{customdata}",
             ]
         ),
     )
 
-    return fig
-
-
-def scatter_3d_filter(df, lon="longitude", lat="latitude", alt="altitude_ato", color="predictions"):
-    fig = go.Figure(data=[go.Scatter3d(
-        x=df[lon],
-        y=df[lat],
-        z=df[alt],
-        mode='markers',
-        marker=dict(
-            size=2,
-            color=df[color],  # color based on predictions
-            colorscale='Viridis',
-            opacity=0.8
-        )
-    )])
     return fig
 
 
@@ -163,19 +145,7 @@ def time_series(df: pd.DataFrame, y: str = "ch4", y2=None, color=None, split=Non
     return fig
 
 
-def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series, centroidcolor=False):
-    def find_color_point(df):
-        lower, upper = df[y].quantile([0.2, 0.8])
-        df_middle_60 = df[(df[y] >= lower) & (df[y] <= upper)].copy()
-        centroid = (df_middle_60["Easting"].mean(), df_middle_60["Northing"].mean())
-        df_middle_60['distance_to_centroid'] = df.apply(
-            lambda row: euclidean((row["Easting"], row["Northing"]), centroid), axis=1)
-        most_distant_point = df_middle_60.loc[df_middle_60['distance_to_centroid'].idxmax()]
-        most_distant_point_coords = (most_distant_point["Easting"], most_distant_point["Northing"])
-        df['distance_to_most_distant'] = df.apply(
-            lambda row: euclidean((row["Easting"], row["Northing"]), most_distant_point_coords), axis=1)
-        return df
-
+def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     ymin = df[y].min()
     ymax = df[y].max()
@@ -185,12 +155,7 @@ def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Seri
     df["normalised"] = df[y] - bkg
     fig.update_yaxes(range=ylim, secondary_y=False, title_text="Sensor CH4 (ppm)")
     fig.update_yaxes(range=y2lim, secondary_y=True, title_text="Normalised CH4 (ppm)")
-    if centroidcolor:
-        df = find_color_point(df)
-        fig.add_scatter(x=df.index, y=df[y], mode='markers', opacity=0.7, name="Raw Data",
-                        marker=dict(color=df['distance_to_most_distant'], colorscale='Viridis'))
-    else:
-        fig.add_scatter(x=df.index, y=df[y], opacity=0.5, name="Raw Data", mode="lines")
+    fig.add_scatter(x=df.index, y=df[y], opacity=0.3, name="Raw Data")
     fig.add_scatter(x=df.index, y=bkg, mode="lines", name="Fitted Baseline", line=dict(dash="dash"))
     fig.add_scatter(x=df.index, y=df["normalised"], yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5)
     fig.add_scatter(x=signal.index, y=signal.values, yaxis="y2", name="Signal Points", mode="markers", opacity=0.5)
@@ -474,12 +439,12 @@ def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
     return fig
 
 
-def slice_grid(df, altitude="altitude_ato"):
+def slice_grid(df):
     fig, ax = plt.subplots(figsize=(20, 10))
     for i in range(df["slice"].max() - df["slice"].min() + 1):  # zero indexed
         df_slice = df[df["slice"] == i]
-        ymin = df_slice[altitude].min()
-        ymax = df_slice[altitude].max()
+        ymin = df_slice["altitude_ato"].min()
+        ymax = df_slice["altitude_ato"].max()
         x = sorted(df_slice["circumference_distance"].values)
         y = [ymin, ymax]
         xx, yy = np.meshgrid(x, y)
@@ -488,20 +453,12 @@ def slice_grid(df, altitude="altitude_ato"):
         ax.pcolormesh(
             xx, yy, zz, cmap="viridis", shading="nearest", clim=(df["ch4_kg_h_m2"].min(), df["ch4_kg_h_m2"].max())
         )
-        ax.set_ylim(df[altitude].min(), df[altitude].max())
+        ax.set_ylim(df["altitude_ato"].min(), df["altitude_ato"].max())
     plt.axis("scaled")
     return fig
 
 
-def create_kml_file(data: pd.DataFrame,
-                    output_file: str,
-                    column: str,
-                    altitudemode: str,  # Literal("absolute"|"relativeToGround"),
-                    longitude_column: str = "longitude",
-                    latitude_column: str = "latitude",
-                    altitude_column: str = "altitude",
-                    concentration_unit: str = "ppm"
-                    ):
+def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudemode: str):
     kml = simplekml.Kml()
 
     min = data[column].min()
@@ -520,12 +477,12 @@ def create_kml_file(data: pd.DataFrame,
 
     for index, row in data.iterrows():
         col_normalized = (row[column] - min) / (max - min)
-        color = mcolors.rgb2hex(cmap(col_normalized))  # type: ignore
+        color = mcolors.rgb2hex(cmap(col_normalized))
 
-        pnt = kml.newpoint(coords=[(row[longitude_column], row[latitude_column], row[altitude_column])], altitudemode=altitudemode)
+        pnt = kml.newpoint(coords=[(row["longitude"], row["latitude"], row["altitude_ato"])], altitudemode=altitudemode)
         pnt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
         pnt.iconstyle.color = simplekml.Color.rgb(int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16))
-        pnt.iconstyle.scale = 1
-        pnt.description = f"Concentration: {row[column]} {concentration_unit}"
+        pnt.iconstyle.scale = 0.6
+        pnt.description = f"Concentration: {row[column]} ppm"
 
     kml.save(output_file)
