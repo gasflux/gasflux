@@ -32,7 +32,7 @@ def ABB_GGA_preprocess(df):
 
 # functions for SeekOps data
 def SeekOps_pre_process(df: pd.DataFrame) -> pd.DataFrame:
-    df.columns = pd.Index([
+    df.columns = [
         "UTCs",
         "Month",
         "Day",
@@ -45,7 +45,7 @@ def SeekOps_pre_process(df: pd.DataFrame) -> pd.DataFrame:
         "WindAngleMetDegrees",
         "WindSpdMps",
         "MethanePPB",
-    ], dtype="str")
+    ]
     df = pre_processing.timestamp_from_four_columns(df)
     df = df.loc[~df.index.duplicated(keep="first")].copy()
     df.rename(
