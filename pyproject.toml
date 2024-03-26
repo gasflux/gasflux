@@ -1,2 +1,29 @@
 [tool.black]
-line-length = 400
+line-length = 120
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[project]
+name = "gasflux"
+version = "0.1.0"
+description = "A package to calculate gas emissions fluxes from natural and anthropogenic sources"
+authors = [
+    { name = "Jamie McQuilkin", email = "jamie.mcquilkin@gmail.com" },
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.11"
+
+dynamic = ["dependencies", "optional-dependencies"]
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+optional-dependencies = {dev = { file = ["dev-requirements.txt"] }}
+
+[project.urls]
+"Homepage" = "https://gasflux.github.io"
+"Bug Tracker" = "https://github.com/gasflux/gasflux/issues"
+
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"

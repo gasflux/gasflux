@@ -13,7 +13,7 @@ from scipy.stats import circmean
 
 # this returns a bimodal heading from a dataframe. minimum difference is in degrees in case the modes are right next to each other
 def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=160):
-    df = df[df['altitude'] >= min_altitude]
+    df = df[df['altitude_ato'] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = data[~np.isnan(data)]
     hist, edges = np.histogram(data, bins=50)
@@ -30,7 +30,7 @@ def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=
 
 # this returns modes of slope from -90 to 90 degrees.
 def bimodal_elevation(df, heading_col="elevation_heading", min_altitude=5, max_slope=70):
-    df = df[df['altitude'] >= min_altitude]
+    df = df[df['altitude_ato'] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = np.abs(data[~np.isnan(data)])
     data = data[data < max_slope]  # to get around the edge case where vertical movements are modal
@@ -41,19 +41,19 @@ def bimodal_elevation(df, heading_col="elevation_heading", min_altitude=5, max_s
 
 
 def altitude_transect_splitter(df):
-    heights, bin_edges = np.histogram(df["altitude"], bins=40)
+    heights, bin_edges = np.histogram(df["altitude_ato"], bins=40)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     peaks, properties = find_peaks(heights)
     bin_centers[peaks]
 
     slice_edges = (bin_centers[peaks][:-1] + bin_centers[peaks][1:]) / 2
-    slice_edges = np.append(df["altitude"].min(), slice_edges)
-    slice_edges = np.append(slice_edges, df["altitude"].max())
+    slice_edges = np.append(df["altitude_ato"].min(), slice_edges)
+    slice_edges = np.append(slice_edges, df["altitude_ato"].max())
     fig, ax = plt.subplots()
     ax.stairs(edges=bin_edges, values=heights, fill=True)
     ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
     ax.vlines(slice_edges, ymin=0, ymax=max(heights), color="red")
-    df["slice"] = pd.cut(df["altitude"], bins=slice_edges, labels=False, include_lowest=True)  # type: ignore
+    df["slice"] = pd.cut(df["altitude_ato"], bins=slice_edges, labels=False, include_lowest=True)  # type: ignore
     return df, fig
 
 
@@ -72,7 +72,7 @@ def heading_filter(  # requires headings to be added already
 ):
     df_unfiltered = df.copy()
     # Filter out any transects where the absolute value of the elevation heading is greater than the elevation filter.
-    # This removes data that doesn't fall within a flat altitude transect as it excludes instances where the drone is climbing or descending significantly.
+    # This removes data that doesn't fall within a flat altitude_ato transect as it excludes instances where the drone is climbing or descending significantly.
     df_filtered = df_unfiltered[abs(df["elevation_heading"]) < elevation_filter]
 
     # Compute the two main azimuths (azimuth is the direction along the horizon) of the data.
@@ -128,7 +128,7 @@ def mCount_max(dict):
 # this function sorts the data into transects based on azimuth switches and then filters to the biggest monotonic series of values
 def largest_monotonic_transect_series(df):
     df = add_transect_azimuth_switches(df)  # heading switches
-    alt_dict = dict(df.groupby("transect")["altitude"].mean())
+    alt_dict = dict(df.groupby("transect")["altitude_ato"].mean())
     starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
     df = df[(df["transect"] >= starttransect) & (df["transect"] <= endtransect)]  # filter to the biggest monotonic series of values
     print(
@@ -137,11 +137,11 @@ def largest_monotonic_transect_series(df):
     return df, starttransect, endtransect
 
 
-# this function takes a pre-processed input of some transects and returns groups of transects in monotonic sequences according to altitude
+# this function takes a pre-processed input of some transects and returns groups of transects in monotonic sequences according to altitude_ato
 # it's advisable to have each group also use the last transect from the previous group
 def monotonic_transect_groups(df):
     df = add_transect_azimuth_switches(df)
-    alt_dict = dict(df.groupby("transect")["altitude"].mean())
+    alt_dict = dict(df.groupby("transect")["altitude_ato"].mean())
 
     group_dict = {}
     previous_altitude = None
@@ -149,13 +149,13 @@ def monotonic_transect_groups(df):
     previous_trend = None
     first_transect_in_series = True
 
-    for transect, altitude in alt_dict.items():
+    for transect, altitude_ato in alt_dict.items():
         if previous_altitude is None:
             group_dict[transect] = f'Group_{current_group}'
         else:
-            if altitude == previous_altitude:
-                raise ValueError("Error: altitude is the same as the previous transect")
-            elif altitude > previous_altitude:
+            if altitude_ato == previous_altitude:
+                raise ValueError("Error: altitude_ato is the same as the previous transect")
+            elif altitude_ato > previous_altitude:
                 current_trend = "ascending"
             else:
                 current_trend = "descending"
@@ -167,7 +167,7 @@ def monotonic_transect_groups(df):
                 first_transect_in_series = False  # this logic deals with the case where someone flies up, flies down one transect and then starts flying up again
             group_dict[transect] = f'Group_{current_group}'
             previous_trend = current_trend
-        previous_altitude = altitude
+        previous_altitude = altitude_ato
     df['group'] = df['transect'].map(group_dict)
 
     return df, group_dict
@@ -271,7 +271,7 @@ def flatten_linear_plane(df: pd.DataFrame, distance_filter) -> tuple[pd.DataFram
     df.loc[:, "y"] = (df["utm_easting"] - df["utm_easting"].min()) * np.sin(-rotation) + (
         df["utm_northing"] - df["utm_northing"].min()
     ) * np.cos(-rotation)
-    df.loc[:, "z"] = df.altitude
+    df.loc[:, "z"] = df.altitude_ato
 
     plane_angle = (np.pi / 2) - np.arctan(coefs2D[0])
     return df, plane_angle
@@ -332,10 +332,10 @@ def recentre_azimuth(df, r: float, x: str = "circ_azimuth", y: str = "ch4_normal
     return df
 
 
-# split data into two dataframes, one for each flight, based on the minimum altitude
+# split data into two dataframes, one for each flight, based on the minimum altitude_ato
 def splittime(df):
-    minalt = df["altitude"].min()
-    splittime = df[df["altitude"] == minalt].index[0]
+    minalt = df["altitude_ato"].min()
+    splittime = df[df["altitude_ato"] == minalt].index[0]
     return splittime
 
 

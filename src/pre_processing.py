@@ -51,7 +51,7 @@ def add_utm(df: pd.DataFrame) -> gpd.GeoDataFrame:
 # add columns for drone azimuth and elevation headings
 def add_heading(df, rolling_window=1):
     df["hor_distance"] = np.sqrt((df["utm_northing"].diff()) ** 2 + (df["utm_easting"].diff()) ** 2)
-    df["vert_distance"] = df["altitude"].diff()
+    df["vert_distance"] = df["altitude_ato"].diff()
 
     df["elevation_heading"] = (
         np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"])).rolling(rolling_window).mean()
