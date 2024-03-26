@@ -1,5 +1,9 @@
 flake8
+ipykernel
 isort
 mypy
+pigar
+pre-commit
 pytest
 safety
+vulture
