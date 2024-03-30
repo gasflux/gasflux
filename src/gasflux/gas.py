@@ -33,12 +33,12 @@ def ch4_density(df: pd.DataFrame, local_pressure, local_temperature) -> float:  
 
 def methane_flux_column(
     df: pd.DataFrame,
-    celsius: float,
-    millibars: float,
     gas: str = "ch4",
     wind: str = "windspeed",
 ) -> pd.DataFrame:
-    methane_density = ch4_density(df, local_pressure=millibars, local_temperature=celsius)  # kg/m3
+    average_temp = df["temperature"].mean()  # celsius
+    average_pressure = df["pressure"].mean()  # hPa
+    methane_density = ch4_density(df, local_pressure=average_pressure, local_temperature=average_temp)  # kg/m3
     df["ch4_kg_m3"] = methane_density * (df[f"{gas}_normalised"] * 1e-6)  # kg/m3
     df["ch4_kg_h_m2"] = df["ch4_kg_m3"] * df[wind] * 60 * 60  # kg/h/m2
     return df

@@ -12,7 +12,6 @@ def baseline(
     df: pd.DataFrame,
     algorithm: str,
     y: str = "ch4",
-    centroidcolor=False,
     ** kwargs,
 ):
     df = df.copy()
@@ -26,7 +25,7 @@ def baseline(
     background = (df[y] - bkg)[bkg_points]
     signal = (df[y] - bkg)[~bkg_points]
     df["signal"] = np.invert(bkg_points)
-    fig = plotting.baseline_plotting(df, y, bkg, signal, centroidcolor=centroidcolor)
+    fig = plotting.baseline_plotting(df, y, bkg, signal)
     output_text = (
         f"Baseline algorithm: {algorithm}\n"
         f"Positive and negative 95% percentile of baseline: {np.percentile(background, 2.5):.2f} ppm, {np.percentile(background, 97.5):.2f} ppm\n"

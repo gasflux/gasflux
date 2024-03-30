@@ -48,6 +48,6 @@ def make_prediction(df: pd.DataFrame, elevation_heading='elevation_heading',
     predictions = model.predict(df[cols_for_model])
 
     df['predictions'] = predictions
-    fig = plotting.scatter_3d_filter(df)
+    fig = plotting.scatter_3d(df)
 
     return df, fig

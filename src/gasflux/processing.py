@@ -259,7 +259,7 @@ def flight_odr_fit(df: pd.DataFrame):
 
 
 # function to take a 3D plane that is near-linear in the xy and turn it into a linear plane with x as distance along the plane and y as depth into the plane
-def flatten_linear_plane(df: pd.DataFrame, distance_filter) -> tuple[pd.DataFrame, float]:
+def flatten_linear_plane(df: pd.DataFrame, distance_filter=10000) -> tuple[pd.DataFrame, float]:  # can specify a distance filter but it's best to do that somewhere else
     df, coefs2D = flight_odr_fit(df)
     df = df.loc[df["distance_from_fit"] < distance_filter, :]
     df, coefs2D = flight_odr_fit(df)  # re-fit to filtered points
