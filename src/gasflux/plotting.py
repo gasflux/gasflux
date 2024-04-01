@@ -1,4 +1,6 @@
-"""various plotting functions mainly based around plotly"""
+"""arVious plotting functions mainly based around plotly."""
+
+from collections.abc import Iterable
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -34,38 +36,45 @@ def blank_figure():
 
 def scatter_3d(
     df: pd.DataFrame,
-    color: str = "ch4",
+    color: str = "",
+    colorbar_title: str = "",
     x: str = "utm_easting",
     y: str = "utm_northing",
     z: str = "altitude_ato",
-    title: str = "Normalised methane conc. (ppm)",
     headings: bool = False,
 ):
-    if headings:
-        custom_data = [df["timestamp"], df["elevation_heading"], df["azimuth_heading"]]
-    else:
+    fig = px.scatter_3d(df, x=x, y=y, z=z)
+
+    if color:
         custom_data = [df["timestamp"]]
-    fig = px.scatter_3d(df, x=x, y=y, z=z, color=color, opacity=0.5,
-                        color_continuous_scale=styling["colorscale"],
-                        custom_data=custom_data)
+        hovertemplate = [
+            "northing: %{x:.2f}",
+            "easting: %{y:.2f}",
+            "altitude_ato: %{z:.2f}",
+            f"{color}: %{{marker.color:.2f}}",
+            "Time: %{customdata[0]}",
+            "idx: %{pointNumber}",
+        ]
 
-    fig.update_traces(marker_size=4)
-
-    fig.update_traces(
-        hovertemplate="<br>".join(
-            [
-                "northing: %{x:.2f}",
-                "easting: %{y:.2f}",
-                "altitude_ato: %{z:.2f}",
-                "CH4: %{marker.color:.2f}",
-                "Time: %{customdata[0]}",
+        if headings:
+            custom_data.extend([df["elevation_heading"], df["azimuth_heading"]])
+            hovertemplate.extend([
                 "elevation heading: %{customdata[1]:.2f}",
                 "azimuth heading: %{customdata[2]:.2f}",
-                "idx: %{pointNumber}",
-            ]
-        ),
-    )
-    fig.update_layout(coloraxis_colorbar=dict(title=title))
+            ])
+
+        fig.update_traces(
+            marker=dict(
+                color=df[color],
+                size=4,
+                opacity=0.5,
+                colorscale=styling["colorscale"],
+                colorbar=dict(title=colorbar_title),
+            ),
+            customdata=custom_data,
+            hovertemplate="<br>".join(hovertemplate),
+        )
+
     return fig
 
 
@@ -93,7 +102,7 @@ def scatter_2d(
                 "altitude_ato: %{y:.2f}",
                 "CH4: %{marker.color:.2f}",
                 "Time: %{customdata}",
-            ]
+            ],
         ),
     )
 
@@ -108,7 +117,7 @@ def time_series(df: pd.DataFrame, y: str = "ch4", y2=None, color=None, split=Non
             y=df[y],
             name=y,
             mode="markers",
-        )
+        ),
     )
     if color is not None:
         fig.update_traces(marker_color=df[color], color_continuous_scale=styling["colorscale"])
@@ -121,7 +130,7 @@ def time_series(df: pd.DataFrame, y: str = "ch4", y2=None, color=None, split=Non
                 name=y2,
                 yaxis="y2",
                 mode="markers",
-            )
+            ),
         )
         fig.update_layout(yaxis2=dict(overlaying="y", side="right"))
     if split is not None:
@@ -137,8 +146,8 @@ def time_series(df: pd.DataFrame, y: str = "ch4", y2=None, color=None, split=Non
                     x1=split,
                     y1=y_max,
                     line=dict(color="red", width=2),
-                )
-            ]
+                ),
+            ],
         )
     fig.update(layout_yaxis_range=[0, df[y].max() * 1.05])
     fig.update_traces(opacity=0.5)
@@ -218,20 +227,21 @@ def windrose_process(df: pd.DataFrame):
     df["wind_direction_bin"] = pd.cut(
         df["winddir"],
         bins=[lower for lower, upper in cardinals.values()] + [list(cardinals.values())[-1][1]],
-        labels=[key for key in cardinals.keys()],
+        labels=[key for key in cardinals],
         right=False,
     )
-    df["wind_direction_bin"] = df["wind_direction_bin"].replace({"N1": "N", "N2": "N"})
+
+    df["wind_direction_bin"] = pd.Categorical(df["wind_direction_bin"].map({"N1": "N", "N2": "N"}))
     df["beaufort"] = pd.cut(
         df["windspeed"],
         bins=[lower for lower, upper in beaufort.values()] + [list(beaufort.values())[-1][1]],
-        labels=[key for key in beaufort.keys()],
+        labels=[key for key in beaufort],
         right=False,
     )
-    df["beaufort_ms"] = df.replace({"beaufort": beaufort_ms})["beaufort"]
-    df_windrose = df.groupby(["wind_direction_bin", "beaufort"]).size().reset_index(name="count")
+    df["beaufort_ms"] = df["beaufort"].map(beaufort_ms)
+    df_windrose = df.groupby(["wind_direction_bin", "beaufort"], observed=False).size().reset_index(name="count")
     df_windrose["frequency"] = df_windrose["count"] / df_windrose["count"].sum() * 100
-    df_windrose["wind_direction_bin_degs"] = df_windrose["wind_direction_bin"].replace(
+    df_windrose["wind_direction_bin_degs"] = df_windrose["wind_direction_bin"].cat.rename_categories(
         {
             "N": 0,
             "NNE": 22.5,
@@ -249,7 +259,7 @@ def windrose_process(df: pd.DataFrame):
             "WNW": 292.5,
             "NW": 315,
             "NNW": 337.5,
-        }
+        },
     )
     df_windrose["beaufort"] = df_windrose["beaufort"].astype(int)
     return df_windrose
@@ -275,13 +285,13 @@ def windrose_graph(df, plot_transect=False, theta1=None, theta2=None):
         polar=dict(
             angularaxis={
                 "showgrid": False,
-            }
-        )
+            },
+        ),
     )
 
     fig.update_layout(polar_bargap=0)
     if plot_transect:
-        max_freq = df.groupby("wind_direction_bin")["frequency"].sum().max()
+        max_freq = df.groupby("wind_direction_bin", observed=False)["frequency"].sum().max()
         fig.add_trace(
             go.Scatterpolar(
                 r=[max_freq, max_freq],
@@ -289,7 +299,7 @@ def windrose_graph(df, plot_transect=False, theta1=None, theta2=None):
                 mode="lines",
                 line=dict(color="black", width=2, dash="dash"),
                 showlegend=False,
-            )
+            ),
         )
     return fig
 
@@ -361,7 +371,7 @@ def contour_krig(df: pd.DataFrame, xx: np.ndarray, yy: np.ndarray, field: np.nda
                 },
             },
             showlegend=False,
-        )
+        ),
     )
     fig.add_trace(
         go.Contour(
@@ -377,7 +387,7 @@ def contour_krig(df: pd.DataFrame, xx: np.ndarray, yy: np.ndarray, field: np.nda
             opacity=0.5,
             showlegend=False,
             showscale=False,
-        )
+        ),
     )
     fig.update_xaxes(
         showline=True,
@@ -451,7 +461,7 @@ def slice_grid(df):
         z = df_slice["ch4_kg_h_m2"].values
         zz = np.array([z, z])
         ax.pcolormesh(
-            xx, yy, zz, cmap="viridis", shading="nearest", clim=(df["ch4_kg_h_m2"].min(), df["ch4_kg_h_m2"].max())
+            xx, yy, zz, cmap="viridis", shading="nearest", clim=(df["ch4_kg_h_m2"].min(), df["ch4_kg_h_m2"].max()),
         )
         ax.set_ylim(df["altitude_ato"].min(), df["altitude_ato"].max())
     plt.axis("scaled")
@@ -461,8 +471,8 @@ def slice_grid(df):
 def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudemode: str):
     kml = simplekml.Kml()
 
-    min = data[column].min()
-    max = data[column].max()
+    min_value = data[column].min()
+    max_value = data[column].max()
 
     custom_colors = [
         "#008080",
@@ -475,8 +485,8 @@ def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudem
     ]  # based on plotly geyser
     cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", custom_colors)
 
-    for index, row in data.iterrows():
-        col_normalized = (row[column] - min) / (max - min)
+    for _index, row in data.iterrows():
+        col_normalized = (row[column] - min) / (max_value - min_value)
         color = mcolors.rgb2hex(cmap(col_normalized))
 
         pnt = kml.newpoint(coords=[(row["longitude"], row["latitude"], row["altitude_ato"])], altitudemode=altitudemode)
@@ -486,3 +496,170 @@ def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudem
         pnt.description = f"Concentration: {row[column]} ppm"
 
     kml.save(output_file)
+
+
+def scatter_3d_multigas(df: pd.DataFrame | None = None,
+                        traces: dict[str, go.Scatter3d] | None = None,
+                        gases: Iterable | None = None,
+                        headings: bool = False) -> go.Figure:
+    """Function to make a multigas 3D graph with optional gas data.
+
+    Args:
+        df: DataFrame containing the gas data (default is an empty DataFrame).
+        traces: A dictionary of 3D scatter traces, where keys are the trace names and the values are the trace objects.
+        gases: Dictionary or list of gas names (default is None).
+        headings: Boolean indicating whether to include headings in the graph (default is False).
+
+    Returns:
+        fig: The generated 3D scatter plot figure.
+    """
+    fig = go.Figure()
+
+    if traces:
+        gases = list(traces.keys())
+        for trace in traces.values():
+            fig.add_trace(trace)
+    elif gases and df:
+        if isinstance(gases, dict):
+            gases = list(gases.keys())
+        for gas in gases:
+            scatterfig = scatter_3d(df, color=gas, colorbar_title=f"Normalised {gas.upper()} (ppm)", headings=headings)
+            fig.add_trace(scatterfig.data[0])
+    else:
+        raise ValueError("Multigas graph needs either traces or list of gases and a non-empty df")
+
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                buttons=list([
+                    dict(
+                        args=[{"visible": [gas == selected_gas for gas in gases]}],
+                        label=selected_gas,
+                        method="update",
+                    ) for selected_gas in gases
+                ]),
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True,
+                x=0.1,
+                xanchor="left",
+                y=1.1,
+                yanchor="top",
+            ),
+        ],
+    )
+
+    fig.update_layout(
+        scene=dict(
+            xaxis_title="Easting",
+            yaxis_title="Northing",
+            zaxis_title="Altitude ATO",
+        ),
+    )
+
+    return fig
+
+
+def baseline_plotting_multigas(gas_figs: dict):  # TODO: fix
+    # Create the initial figure
+    fig = go.Figure()
+
+    # Add dropdown menu
+    dropdown_buttons = []
+    for gas in gas_figs:
+        dropdown_buttons.append(dict(label=gas, method="update", args=[{"visible": [gas == g for g in gas_figs]}]))
+
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                active=0,
+                buttons=dropdown_buttons,
+                x=0.1,
+                y=1.1,
+                xanchor="left",
+                yanchor="top",
+            ),
+        ],
+    )
+
+    # Add traces for each gas
+    for gas_fig in gas_figs.values():
+        for trace in gas_fig.data:
+            fig.add_trace(trace)
+
+    # Set initial visibility based on the first gas
+    first_gas = next(iter(gas_figs.keys()))
+    for trace in fig.data:
+        trace.visible = trace.name.startswith(first_gas)
+
+    return fig
+
+
+def contour_krig_multigas(traces: dict[str, go.Figure]) -> go.Figure:
+    """Function to create a multigas contour plot with kriging interpolation.
+
+    Args:
+        traces: A dictionary of contour plot traces, where keys are trace names and the values are the trace objects.
+
+    Returns:
+        fig: The generated multigas contour plot figure.
+    """
+    fig = go.Figure()
+    gases = list(traces.keys())
+
+    for _gas, trace_fig in traces.items():
+        contour_trace = trace_fig.data[1]  # Assumes the contour trace is the second trace in each figure
+        fig.add_trace(contour_trace)
+
+        scatter_trace = trace_fig.data[0]  # Assumes the scatter trace is the first trace in each figure
+        # scatter_trace.marker.colorbar.title = f"{gas} (ppm)"
+        fig.add_trace(scatter_trace)
+
+    fig.update_xaxes(
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+        title_text="Horizontal distance on projected flux plane (m)",
+        ticks="outside",
+        tickwidth=1,
+        tickcolor="black",
+        ticklen=5,
+        nticks=20,
+    )
+
+    fig.update_yaxes(
+        showline=True,
+        linewidth=1,
+        linecolor="black",
+        title_text="Height above ground level (m)",
+        ticks="outside",
+        tickwidth=1,
+        tickcolor="black",
+        ticklen=5,
+        nticks=10,
+    )
+
+    fig.layout.coloraxis.colorbar.title = "Emissions flux (kg⋅m⁻²⋅h⁻¹)"
+
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                buttons=list([
+                    dict(
+                        args=[{"visible": [gas == trace_gas for trace_gas in gases]}],
+                        label=gas,
+                        method="update",
+                    ) for gas in gases
+                ]),
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True,
+                x=0.1,
+                xanchor="left",
+                y=1.1,
+                yanchor="top",
+            ),
+        ],
+    )
+
+    return fig

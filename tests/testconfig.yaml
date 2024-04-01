@@ -1,6 +1,6 @@
-# config.yaml
+# testconfig.yaml
 
-output_dir: ~/gasflux_reports
+output_dir: ./test_reports
 
 gases:
   ch4: [1.5, 500]
@@ -35,7 +35,3 @@ required_cols:
   winddir: [0, 360]
   temperature: [-50, 60]
   pressure: [900, 1100]
-
-
-
-

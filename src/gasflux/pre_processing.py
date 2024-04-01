@@ -66,19 +66,19 @@ def add_heading(df, rolling_window=1):
 def manual_filtering(dict_dfs: dict, split_times: dict, mask_spans: dict) -> dict:
     filtered_dfs = {}
     for name, df in dict_dfs.items():
-        if name in mask_spans.keys():
+        if name in mask_spans:
             for i in range(len(mask_spans[name])):
                 df = df.drop(
-                    df.between_time(mask_spans[name][i].split(" - ")[0], mask_spans[name][i].split(" - ")[1]).index
+                    df.between_time(mask_spans[name][i].split(" - ")[0], mask_spans[name][i].split(" - ")[1]).index,
                 ).copy()
                 filtered_dfs[name] = df.copy()
-        if name in split_times.keys():
+        if name in split_times:
             split_times[name].append("23:59:59")
             split_times[name].insert(0, "00:00:00")
             for i in range(len(split_times[name]) - 1):
                 df2 = df.between_time(split_times[name][i], split_times[name][i + 1]).copy()
                 filtered_dfs[name + "_" + str(i)] = df2.copy()
-        elif name not in split_times.keys():
+        elif name not in split_times:
             filtered_dfs[name] = df.copy()
     return filtered_dfs
 

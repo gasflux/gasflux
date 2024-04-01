@@ -5,7 +5,7 @@ from itertools import groupby
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import scipy.odr as odr
+from scipy import odr
 from scipy.optimize import least_squares
 from scipy.signal import find_peaks
 from scipy.stats import circmean
@@ -13,7 +13,7 @@ from scipy.stats import circmean
 
 # this returns a bimodal heading from a dataframe. minimum difference is in degrees in case the modes are right next to each other
 def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=160):
-    df = df[df['altitude_ato'] >= min_altitude]
+    df = df[df["altitude_ato"] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = data[~np.isnan(data)]
     hist, edges = np.histogram(data, bins=50)
@@ -30,7 +30,7 @@ def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=
 
 # this returns modes of slope from -90 to 90 degrees.
 def bimodal_elevation(df, heading_col="elevation_heading", min_altitude=5, max_slope=70):
-    df = df[df['altitude_ato'] >= min_altitude]
+    df = df[df["altitude_ato"] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = np.abs(data[~np.isnan(data)])
     data = data[data < max_slope]  # to get around the edge case where vertical movements are modal
@@ -132,7 +132,7 @@ def largest_monotonic_transect_series(df):
     starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
     df = df[(df["transect"] >= starttransect) & (df["transect"] <= endtransect)]  # filter to the biggest monotonic series of values
     print(
-        f"Parsed a flight of {endtransect-starttransect} transects from {alt_dict[starttransect]:.0f}m to {alt_dict[endtransect]:.0f}m between the time of {df.index[0]} and {df.index[-1]}"
+        f"Parsed a flight of {endtransect-starttransect} transects from {alt_dict[starttransect]:.0f}m to {alt_dict[endtransect]:.0f}m between the time of {df.index[0]} and {df.index[-1]}",
     )
     return df, starttransect, endtransect
 
@@ -151,7 +151,7 @@ def monotonic_transect_groups(df):
 
     for transect, altitude_ato in alt_dict.items():
         if previous_altitude is None:
-            group_dict[transect] = f'Group_{current_group}'
+            group_dict[transect] = f"Group_{current_group}"
         else:
             if altitude_ato == previous_altitude:
                 raise ValueError("Error: altitude_ato is the same as the previous transect")
@@ -165,10 +165,10 @@ def monotonic_transect_groups(df):
                 first_transect_in_series = True
             if current_trend == previous_trend or previous_trend is None:
                 first_transect_in_series = False  # this logic deals with the case where someone flies up, flies down one transect and then starts flying up again
-            group_dict[transect] = f'Group_{current_group}'
+            group_dict[transect] = f"Group_{current_group}"
             previous_trend = current_trend
         previous_altitude = altitude_ato
-    df['group'] = df['transect'].map(group_dict)
+    df["group"] = df["transect"].map(group_dict)
 
     return df, group_dict
 
@@ -191,10 +191,10 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=120):
         split_runs = []
         for run in runs:
-            last_azimuth = df.iloc[run[0][0]]['smoothed_azimuth_heading']
+            last_azimuth = df.iloc[run[0][0]]["smoothed_azimuth_heading"]
             current_run = [run[0]]
             for point in run[1:]:
-                current_azimuth = df.iloc[point[0]]['smoothed_azimuth_heading']
+                current_azimuth = df.iloc[point[0]]["smoothed_azimuth_heading"]
                 if min_angular_diff_deg(current_azimuth, last_azimuth) > azimuth_inversion_threshold:
                     split_runs.append(current_run)
                     current_run = [point]
@@ -206,22 +206,22 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
 
     # Create new columns for filtering reasons, initialized with False
     df_removed = df.copy()
-    df_removed['filtered_by_azimuth'] = False
-    df_removed['filtered_by_elevation'] = False
-    df_removed['filtered_by_chain'] = False
+    df_removed["filtered_by_azimuth"] = False
+    df_removed["filtered_by_elevation"] = False
+    df_removed["filtered_by_chain"] = False
 
     # Apply azimuth filter
     major_azi_headings = bimodal_azimuth(df, heading_col="azimuth_heading")
     major_elev_headings = bimodal_elevation(df, heading_col="elevation_heading")
     # Apply rolling median to azimuth and elevation headings and store them in new columns
-    df_removed['smoothed_azimuth_heading'] = df_removed['azimuth_heading'].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed['azimuth_heading'], inplace=False)
-    df_removed['smoothed_elevation_heading'] = df_removed['elevation_heading'].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed['elevation_heading'], inplace=False)
-    azimuth_mask = df_removed['smoothed_azimuth_heading'].apply(lambda x: any([min_angular_diff_deg(x, major) <= azimuth_tolerance for major in major_azi_headings]))
-    df_removed.loc[~azimuth_mask, 'filtered_by_azimuth'] = True
+    df_removed["smoothed_azimuth_heading"] = df_removed["azimuth_heading"].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed["azimuth_heading"], inplace=False)
+    df_removed["smoothed_elevation_heading"] = df_removed["elevation_heading"].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed["elevation_heading"], inplace=False)
+    azimuth_mask = df_removed["smoothed_azimuth_heading"].apply(lambda x: any([min_angular_diff_deg(x, major) <= azimuth_tolerance for major in major_azi_headings]))
+    df_removed.loc[~azimuth_mask, "filtered_by_azimuth"] = True
 
     # Apply elevation filter
-    elevation_mask = df_removed['smoothed_elevation_heading'].apply(lambda x: any([min_angular_diff_deg(x, major) <= elevation_tolerance for major in major_elev_headings]))
-    df_removed.loc[~elevation_mask, 'filtered_by_elevation'] = True
+    elevation_mask = df_removed["smoothed_elevation_heading"].apply(lambda x: any([min_angular_diff_deg(x, major) <= elevation_tolerance for major in major_elev_headings]))
+    df_removed.loc[~elevation_mask, "filtered_by_elevation"] = True
 
     # Combined mask for azimuth and elevation
     mask = azimuth_mask & elevation_mask
@@ -229,9 +229,9 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     true_runs = get_true_runs(mask)
     split_runs = split_runs_on_azimuth_inversion(df_removed, true_runs)
     chain_mask = [len(run) >= chain_length for run in split_runs]
-    chain_filtered_runs = [run for run, filter_by_chain in zip(split_runs, chain_mask) if filter_by_chain]
+    chain_filtered_runs = [run for run, filter_by_chain in zip(split_runs, chain_mask, strict=False) if filter_by_chain]
     chain_filtered_indices = [point[0] for run in chain_filtered_runs for point in run]
-    df_removed.loc[df_removed.index.difference(chain_filtered_indices), 'filtered_by_chain'] = True
+    df_removed.loc[df_removed.index.difference(chain_filtered_indices), "filtered_by_chain"] = True
 
     filtered_segments = [df_removed.iloc[run[0][0]:run[-1][0] + 1] for run in chain_filtered_runs]
 

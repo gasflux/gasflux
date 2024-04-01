@@ -16,7 +16,7 @@ def ABB_GGA_preprocess(df):
             "Altitude (m)": "altitude",
             "WindSpeed3D (m/s)": "windspeed",
             "WindDirection (degree)": "winddir",
-        }
+        },
     )
     df.index = pd.to_datetime(df["SysTime"])
     df = df.dropna()
@@ -24,9 +24,9 @@ def ABB_GGA_preprocess(df):
     # pre_processing.data_tests(df) # removed for now as windspeeds are too high
     df_list = {}
     # split df into several sections based on large gaps in timestamps, called df1, df2 etc.
-    for i, df in enumerate(np.array_split(df, np.where(np.diff(df.index) > pd.Timedelta("1m"))[0] + 1)):
-        df["altitude"] = df["altitude"] - df["altitude"].min()
-        df_list[f"df{i + 1}"] = df
+    for i, subdf in enumerate(np.array_split(df, np.where(np.diff(df.index) > pd.Timedelta("1m"))[0] + 1)):
+        subdf["altitude"] = subdf["altitude"] - subdf["altitude"].min()
+        df_list[f"df{i + 1}"] = subdf
     return df_list
 
 
@@ -68,19 +68,19 @@ def SeekOps_pre_process(df: pd.DataFrame) -> pd.DataFrame:
 
 def SeekOps_process(df, celsius, millibars):  # after baseline correction
     df["circ_deviation"], df["circ_azimuth"], df_radius = processing.circle_deviation(
-        df, "utm_easting", "utm_northing"
+        df, "utm_easting", "utm_northing",
     )
     df = df[df["circ_deviation"].between(-df_radius / 10, df_radius / 10)].copy()  # 10% radius tolerance
     df = processing.recentre_azimuth(df, r=df_radius)
     df["x"] = df["circumference_distance"]
-    df = gas.methane_flux_column(df, celsius, millibars)
+    df = gas.gas_flux_column(df=df, gas="ch4")
     return df
 
 
 # functions for Scientific Aviation daprocessingta
 def SciAv_pre_process(folder):
     assert len(list(folder.glob("merge.txt"))) == 1, "more than one merge.txt file found"
-    df = pd.read_csv(list(folder.glob("merge.txt"))[0])
+    df = pd.read_csv(next(iter(folder.glob("merge.txt"))))
     df2 = pd.DataFrame()
     # read all raw files and append to df2
     for file in folder.glob("Z*.txt"):
@@ -119,7 +119,7 @@ def SciAv_pre_process(folder):
     df = pd.merge_asof(df, df2, on="time", direction="nearest", tolerance=pd.Timedelta("2s"))
     df["UTC"] = pd.to_datetime(df["Time(MST)"]).dt.tz_localize("MST").dt.tz_convert("UTC")
     df["timestamp"] = pd.to_datetime(
-        df["UTC"].dt.strftime("%Y-%m-%d") + " " + pd.to_datetime(df["time"]).dt.time.astype(str)
+        df["UTC"].dt.strftime("%Y-%m-%d") + " " + pd.to_datetime(df["time"]).dt.time.astype(str),
     )
     df = df.set_index(df["timestamp"], drop=True)
     df.index.name = "Time(UTC)"
@@ -188,7 +188,7 @@ def SciAv_process_gaussian(
     )
     df = processing.add_rows(df)
     df = processing.heading_filter(  # do it twice to remove points on the way up and down
-        df, azimuth_filter=azimuth_filter, azimuth_window=azimuth_window, elevation_filter=elevation_filter
+        df, azimuth_filter=azimuth_filter, azimuth_window=azimuth_window, elevation_filter=elevation_filter,
     )
     df, plane_angle = processing.flatten_linear_plane(df, odr_distance_filter)
     df = gas.methane_flux_column(df, celsius, millibars)

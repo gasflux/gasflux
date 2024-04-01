@@ -19,6 +19,8 @@ start_conditions = {
     "transect_length": 100,
     "number_of_transects": 10,
     "methane_range": (2.000, 10.000),
+    "carbon_dioxide_range": (400.0, 500.0),
+    "ethane_range": (0.0, 1.0),
     "temperature": 10.0,
     "pressure": 1000.0,
 }
@@ -27,7 +29,7 @@ folder = Path(__file__).parent.parent / "tests" / "data"
 folder.mkdir(exist_ok=True)
 
 
-class Test2DDataset():
+class Test2DDataset:
     def __init__(self, start_conditions):
         self.timestamp = start_conditions.get("timestamp")
         self.flight_time_seconds = start_conditions.get("flight_time_seconds")
@@ -39,6 +41,8 @@ class Test2DDataset():
         self.transect_length = start_conditions.get("transect_length")
         self.number_of_transects = start_conditions.get("number_of_transects")
         self.methane_range = start_conditions.get("methane_range")
+        self.carbon_dioxide_range = start_conditions.get("carbon_dioxide_range")
+        self.ethane_range = start_conditions.get("ethane_range")
         self.temperature = start_conditions.get("temperature")
         self.pressure = start_conditions.get("pressure")
         self.azimuth = (np.mean(self.winddir_range) + 90) % 360
@@ -50,8 +54,7 @@ class Test2DDataset():
 
     @staticmethod
     def calculate_end_coords(start_coords, azimuth, distance):
-        """
-        Calculate end coordinates given start coordinates, azimuth, and distance.
+        """Calculate end coordinates given start coordinates, azimuth, and distance.
         Assumes a spherical Earth for simplicity.
         """
         R = 6371000  # Earth radius in meters
@@ -95,6 +98,8 @@ class Test2DDataset():
         np.random.seed(0)
         self.df["windspeed"] = self.df["windspeed"] = np.random.uniform(self.windspeed_range[0], self.windspeed_range[1], self.total_points)
         self.df["ch4"] = np.random.uniform(self.methane_range[0], self.methane_range[1], self.total_points)
+        self.df["co2"] = np.random.uniform(self.carbon_dioxide_range[0], self.carbon_dioxide_range[1], self.total_points)
+        self.df["c2h6"] = np.random.uniform(self.ethane_range[0], self.ethane_range[1], self.total_points)
         self.df["winddir"] = self.azimuth
         self.df["temperature"] = self.temperature
         self.df["pressure"] = self.pressure
@@ -104,4 +109,4 @@ class Test2DDataset():
 test_data = Test2DDataset(start_conditions)
 plot = gasflux.plotting.scatter_3d(df=test_data.df, x="longitude", y="latitude", z="altitude_ato", color="ch4")
 plot.show()
-test_data.df.to_csv(folder / "test_data.csv", index=False)
+test_data.df.to_csv(folder / "testdata.csv", index=False)

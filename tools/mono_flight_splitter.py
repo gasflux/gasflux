@@ -1,5 +1,4 @@
-"""
-a script to split a folder of flights into multiple flights based on the monotonic changes in altitude.
+"""a script to split a folder of flights into multiple flights based on the monotonic changes in altitude.
 Takes a csv file as an input and will split it out into several csvs.
 Needs azimuth headings to work properly.
 """
@@ -23,18 +22,18 @@ def main(target_dir, search_string, output_dir=None):
         df_list[file] = df
 
     for path, df in df_list.items():
-        print(colorama.Fore.WHITE + '----------------------------------------')
+        print(colorama.Fore.WHITE + "----------------------------------------")
         df, groupdict = gasflux.processing.monotonic_transect_groups(df, tolerance=120)
         last_transect = None
         last_group_trend = None
-        for group in df['group'].unique():
+        for group in df["group"].unique():
             # leaving this out for now as the group folder is a good identifier
             # if len(df['group'].unique()) == 1:
             #     print(colorama.Fore.RED + f'Skipping{path.name} - only one group')
             #     continue
-            group_df = df[df['group'] == group]
+            group_df = df[df["group"] == group]
             avg_altitudes = group_df.groupby(
-                'transect')['altitude'].mean().values
+                "transect")["altitude"].mean().values
             avg_change = sum([avg_altitudes[i + 1] - avg_altitudes[i] for i in range(
                 len(avg_altitudes) - 1)]) / len(avg_altitudes) if len(avg_altitudes) > 1 else 0
             # what's the trend
@@ -43,22 +42,22 @@ def main(target_dir, search_string, output_dir=None):
             if last_group_trend and last_group_trend != current_group_trend and last_transect is not None:
                 group_df = pd.concat([last_transect, group_df])
                 avg_altitudes = group_df.groupby(
-                    'transect')['altitude'].mean().values
+                    "transect")["altitude"].mean().values
             # check if the group is monotonic
             is_monotonic = np.all(np.diff(avg_altitudes) > 0) or np.all(
                 np.diff(avg_altitudes) < 0)
             if not is_monotonic:  # exception
-                print(f'group {group} is not monotonic - check the code!')
+                print(f"group {group} is not monotonic - check the code!")
             formatted_avg_altitudes = ", ".join(
                 [f"{alt:.1f}" for alt in avg_altitudes])
             # do it where transect is the maximum transect number
-            last_transect = group_df[group_df['transect']
-                                     == group_df['transect'].max()].copy()
-            last_transect.loc[:, 'transect'] = 0
+            last_transect = group_df[group_df["transect"]
+                                     == group_df["transect"].max()].copy()
+            last_transect.loc[:, "transect"] = 0
             last_group_trend = current_group_trend
-            unique_transects = len(group_df['transect'].unique())
+            unique_transects = len(group_df["transect"].unique())
             if unique_transects < 3:
-                print(colorama.Fore.RED + f'Not saving {group} - not enough transects ({unique_transects} transects at {formatted_avg_altitudes}m)')
+                print(colorama.Fore.RED + f"Not saving {group} - not enough transects ({unique_transects} transects at {formatted_avg_altitudes}m)")
             else:
                 path = Path(path)
                 if output_dir:
@@ -73,13 +72,13 @@ def main(target_dir, search_string, output_dir=None):
                                             f'{"/".join(output_path.parts[-5:])}')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--target-dir', help='the directory to search for csvs', default='survey')
+        "--target-dir", help="the directory to search for csvs", default="survey")
     parser.add_argument(
-        '--search-string', help='the string to search for in the directory', default='*filtered.csv')
+        "--search-string", help="the string to search for in the directory", default="*filtered.csv")
     parser.add_argument(
-        '--output-dir', help='the metadirectory to save the date/time/csvs to', required=False)
+        "--output-dir", help="the metadirectory to save the date/time/csvs to", required=False)
     args = parser.parse_args()
     main(args.target_dir, args.search_string, args.output_dir)
