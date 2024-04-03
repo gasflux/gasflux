@@ -23,7 +23,7 @@ def main(target_dir, search_string, output_dir=None):
 
     for path, df in df_list.items():
         print(colorama.Fore.WHITE + "----------------------------------------")
-        df, groupdict = gasflux.processing.monotonic_transect_groups(df, tolerance=120)
+        df, groupdict = gasflux.processing.monotonic_transect_groups(df)
         last_transect = None
         last_group_trend = None
         for group in df["group"].unique():
@@ -45,6 +45,7 @@ def main(target_dir, search_string, output_dir=None):
             if last_group_trend and last_group_trend != current_group_trend and last_transect is not None:
                 group_df = pd.concat([last_transect, group_df])
                 avg_altitudes = group_df.groupby("transect")["altitude"].mean().values
+            avg_altitudes = np.array(avg_altitudes)
             # check if the group is monotonic
             is_monotonic = np.all(np.diff(avg_altitudes) > 0) or np.all(np.diff(avg_altitudes) < 0)
             if not is_monotonic:  # exception
