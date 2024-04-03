@@ -1,8 +1,7 @@
-"""arVious plotting functions mainly based around plotly."""
+"""Various plotting functions mainly based around plotly."""
 
 
 import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -55,7 +54,8 @@ def scatter_3d(
         ]
 
         if headings:
-            custom_data.extend([df["elevation_heading"], df["azimuth_heading"]])
+            custom_data.extend(
+                [df["elevation_heading"], df["azimuth_heading"]])
             hovertemplate.extend([
                 "elevation heading: %{customdata[1]:.2f}",
                 "azimuth heading: %{customdata[2]:.2f}",
@@ -119,7 +119,8 @@ def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
         ),
     )
     if color is not None:
-        fig.update_traces(marker_color=df[color], color_continuous_scale=styling["colorscale"])
+        fig.update_traces(
+            marker_color=df[color], color_continuous_scale=styling["colorscale"])
     fig.update_traces(marker_size=8)
     if y2 is not None:
         fig.add_trace(
@@ -161,12 +162,17 @@ def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Seri
     y2min = (df[y] - bkg).min()
     y2lim = (y2min, y2min + (ylim[1] - ylim[0]))
     df["normalised"] = df[y] - bkg
-    fig.update_yaxes(range=ylim, secondary_y=False, title_text="Sensor CH4 (ppm)")
-    fig.update_yaxes(range=y2lim, secondary_y=True, title_text="Normalised CH4 (ppm)")
+    fig.update_yaxes(range=ylim, secondary_y=False,
+                     title_text="Sensor CH4 (ppm)")
+    fig.update_yaxes(range=y2lim, secondary_y=True,
+                     title_text="Normalised CH4 (ppm)")
     fig.add_scatter(x=df.index, y=df[y], opacity=0.3, name="Raw Data")
-    fig.add_scatter(x=df.index, y=bkg, mode="lines", name="Fitted Baseline", line=dict(dash="dash"))
-    fig.add_scatter(x=df.index, y=df["normalised"], yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5)
-    fig.add_scatter(x=signal.index, y=signal.values, yaxis="y2", name="Signal Points", mode="markers", opacity=0.5)
+    fig.add_scatter(x=df.index, y=bkg, mode="lines",
+                    name="Fitted Baseline", line=dict(dash="dash"))
+    fig.add_scatter(x=df.index, y=df["normalised"], yaxis="y2",
+                    name="Normalised Data", mode="lines", opacity=0.5)
+    fig.add_scatter(x=signal.index, y=signal.values, yaxis="y2",
+                    name="Signal Points", mode="markers", opacity=0.5)
 
     return fig
 
@@ -225,21 +231,26 @@ def windrose_process(df: pd.DataFrame):
     }
     df["wind_direction_bin"] = pd.cut(
         df["winddir"],
-        bins=[lower for lower, upper in cardinals.values()] + [list(cardinals.values())[-1][1]],
+        bins=[lower for lower, upper in cardinals.values()] +
+        [list(cardinals.values())[-1][1]],
         labels=[key for key in cardinals],
         right=False,
     )
 
-    df["wind_direction_bin"] = df["wind_direction_bin"].replace({"N1": "N", "N2": "N"})
+    df["wind_direction_bin"] = df["wind_direction_bin"].replace(
+        {"N1": "N", "N2": "N"})
     df["beaufort"] = pd.cut(
         df["windspeed"],
-        bins=[lower for lower, upper in beaufort.values()] + [list(beaufort.values())[-1][1]],
+        bins=[lower for lower, upper in beaufort.values()] +
+        [list(beaufort.values())[-1][1]],
         labels=[key for key in beaufort],
         right=False,
     )
     df["beaufort_ms"] = df["beaufort"].map(beaufort_ms)
-    df_windrose = df.groupby(["wind_direction_bin", "beaufort"], observed=False).size().reset_index(name="count")
-    df_windrose["frequency"] = df_windrose["count"] / df_windrose["count"].sum() * 100
+    df_windrose = df.groupby(["wind_direction_bin", "beaufort"],
+                             observed=False).size().reset_index(name="count")
+    df_windrose["frequency"] = df_windrose["count"] / \
+        df_windrose["count"].sum() * 100
     df_windrose["wind_direction_bin_degs"] = df_windrose["wind_direction_bin"].cat.rename_categories(
         {
             "N": 0,
@@ -266,7 +277,8 @@ def windrose_process(df: pd.DataFrame):
 
 def windrose_graph(df, plot_transect=False, theta1=None, theta2=None):
     n_colors = 13
-    colors = px.colors.sample_colorscale("turbo", [n / (n_colors - 1) for n in range(n_colors)])
+    colors = px.colors.sample_colorscale(
+        "turbo", [n / (n_colors - 1) for n in range(n_colors)])
     fig = px.bar_polar(
         df,
         r="frequency",
@@ -279,7 +291,8 @@ def windrose_graph(df, plot_transect=False, theta1=None, theta2=None):
         },
         color_discrete_map=colors,
     )
-    fig.update_layout(polar=dict(radialaxis={"visible": False, "showticklabels": False}))
+    fig.update_layout(polar=dict(
+        radialaxis={"visible": False, "showticklabels": False}))
     fig.update_layout(
         polar=dict(
             angularaxis={
@@ -290,7 +303,8 @@ def windrose_graph(df, plot_transect=False, theta1=None, theta2=None):
 
     fig.update_layout(polar_bargap=0)
     if plot_transect:
-        max_freq = df.groupby("wind_direction_bin", observed=False)["frequency"].sum().max()
+        max_freq = df.groupby("wind_direction_bin", observed=False)[
+            "frequency"].sum().max()
         fig.add_trace(
             go.Scatterpolar(
                 r=[max_freq, max_freq],
@@ -307,19 +321,23 @@ def windrose(df: pd.DataFrame, plot_transect=False):
     df_windrose = windrose_process(df)
     if plot_transect:
         theta1, theta2 = processing.bimodal_azimuth(df)
-        fig = windrose_graph(df_windrose, plot_transect=plot_transect, theta1=theta1, theta2=theta2)
+        fig = windrose_graph(
+            df_windrose, plot_transect=plot_transect, theta1=theta1, theta2=theta2)
     else:
         fig = windrose_graph(df_windrose, plot_transect=plot_transect)
     return fig
 
 
 def outliers(original_data: pd.Series, fence_high: float, fence_low: float):
-    outliers = np.array(original_data > fence_high) | (original_data < fence_low)
+    outliers = np.array(original_data > fence_high) | (
+        original_data < fence_low)
 
     fig = make_subplots(rows=1, cols=2, shared_yaxes=True)
-    fig.add_trace(px.strip(original_data, color=outliers).data[0], row=1, col=1)
+    fig.add_trace(
+        px.strip(original_data, color=outliers).data[0], row=1, col=1)
     if sum(outliers) > 0:
-        fig.add_trace(px.strip(original_data, color=outliers).data[1], row=1, col=1)
+        fig.add_trace(
+            px.strip(original_data, color=outliers).data[1], row=1, col=1)
         fig.add_shape(
             go.layout.Shape(
                 type="line",
@@ -346,9 +364,11 @@ def outliers(original_data: pd.Series, fence_high: float, fence_low: float):
         )
     fig.update_traces(offsetgroup=0)
 
-    fig.add_trace(px.scatter(original_data, color=outliers).data[0], row=1, col=2)
+    fig.add_trace(px.scatter(
+        original_data, color=outliers).data[0], row=1, col=2)
     if sum(outliers) > 0:
-        fig.add_trace(px.scatter(original_data, color=outliers).data[1], row=1, col=2)
+        fig.add_trace(px.scatter(
+            original_data, color=outliers).data[1], row=1, col=2)
     fig.update_layout(showlegend=False, yaxis_title="Windspeed (ms⁻¹)")
 
     return fig
@@ -424,7 +444,8 @@ def contour_krig(df: pd.DataFrame,
 
 
 def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
-    fig = px.imshow(field.T, x=xx[:, 0], y=yy[0, :], color_continuous_scale=styling["colorscale"], origin="lower")
+    fig = px.imshow(field.T, x=xx[:, 0], y=yy[0, :],
+                    color_continuous_scale=styling["colorscale"], origin="lower")
     fig.layout.coloraxis.colorbar.title = "Emissions flux (kg⋅m⁻²⋅h⁻¹)"
     fig.update_xaxes(
         showline=True,
@@ -454,25 +475,6 @@ def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
     return fig
 
 
-def slice_grid(df, gas):
-    fig, ax = plt.subplots(figsize=(20, 10))
-    for i in range(df["slice"].max() - df["slice"].min() + 1):  # zero indexed
-        df_slice = df[df["slice"] == i]
-        ymin = df_slice["altitude_ato"].min()
-        ymax = df_slice["altitude_ato"].max()
-        x = sorted(df_slice["circumference_distance"].values)
-        y = [ymin, ymax]
-        xx, yy = np.meshgrid(x, y)
-        z = df_slice[f"{gas}_kg_h_m2"].values
-        zz = np.array([z, z])
-        ax.pcolormesh(
-            xx, yy, zz, cmap="viridis", shading="nearest", clim=(df[f"{gas}_kg_h_m2"].min(), df[f"{gas}_kg_h_m2"].max()),
-        )
-        ax.set_ylim(df["altitude_ato"].min(), df["altitude_ato"].max())
-    plt.axis("scaled")
-    return fig
-
-
 def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudemode: str):
     kml = simplekml.Kml()
 
@@ -488,15 +490,18 @@ def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudem
         "#de8a5a",
         "#ca562c",
     ]  # based on plotly geyser
-    cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", custom_colors)
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        "custom_cmap", custom_colors)
 
     for _index, row in data.iterrows():
         col_normalized = (row[column] - min) / (max_value - min_value)
         color = mcolors.rgb2hex(cmap(col_normalized))
 
-        pnt = kml.newpoint(coords=[(row["longitude"], row["latitude"], row["altitude_ato"])], altitudemode=altitudemode)
+        pnt = kml.newpoint(coords=[(
+            row["longitude"], row["latitude"], row["altitude_ato"])], altitudemode=altitudemode)
         pnt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
-        pnt.iconstyle.color = simplekml.Color.rgb(int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16))
+        pnt.iconstyle.color = simplekml.Color.rgb(
+            int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16))
         pnt.iconstyle.scale = 0.6
         pnt.description = f"Concentration: {row[column]} ppm"
 

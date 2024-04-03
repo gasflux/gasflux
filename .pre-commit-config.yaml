@@ -57,9 +57,3 @@ repos:
         language: python
         args: [--fix]
         files: ^.*py$
-
-      - id: ruff-format
-        name: ruff-format
-        language: python
-        entry: ruff-format
-        files: ^.*py$
