@@ -16,17 +16,21 @@ def load_model():
         model_file_path = os.getenv("GASFLUX_MODEL_PATH", default_model_path)
         try:
             model = joblib.load(model_file_path)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Model file not found at {model_file_path}. Please check the file path.")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Model file not found at {model_file_path}. Please check the file path.") from e
         except Exception as e:
-            raise Exception(f"An error occurred while loading the model: {e!s}")
+            raise Exception("An error occurred while loading the model.") from e
 
     return model
 
 
-def make_prediction(df: pd.DataFrame, elevation_heading="elevation_heading",
-                    altitude_ato="altitude_ato",
-                    horiz_spd="horiz_spd", z_spd="z_spd"):
+def make_prediction(
+    df: pd.DataFrame,
+    elevation_heading="elevation_heading",
+    altitude_ato="altitude_ato",
+    horiz_spd="horiz_spd",
+    z_spd="z_spd",
+):
     """Make predictions based on the input DataFrame and add them to the DataFrame.
     :param df: DataFrame containing the required features
     :param azimuth_heading: Name of the column containing the azimuth heading

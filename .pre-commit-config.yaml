@@ -51,9 +51,11 @@ repos:
         language: python
         files: ^.*py$
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.5
+    hooks:
       - id: ruff
-        name: ruff
-        entry: ruff
-        language: python
+        types_or: [python, pyi, jupyter]
         args: [--fix]
-        files: ^.*py$
+      - id: ruff-format
+        types_or: [python, pyi, jupyter]

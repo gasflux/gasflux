@@ -9,9 +9,9 @@ import pandas as pd
 import gasflux
 
 start_conditions = {
-    "timestamp" : "2022-09-26 02:03:00",
-    "flight_time_seconds" : 1000,
-    "sample_frequency" : 1,
+    "timestamp": "2022-09-26 02:03:00",
+    "flight_time_seconds": 1000,
+    "sample_frequency": 1,
     "start_coords": (54.876670, 15.410000),
     "altitude_ato_range": (-10, 100),  # negative altitudes shouldn't break anything
     "windspeed_range": (4, 10),
@@ -62,10 +62,14 @@ class Test2DDataset:
 
         start_lat_rad = radians(start_coords[0])
         start_lon_rad = radians(start_coords[1])
-        end_lat_rad = np.arcsin(np.sin(start_lat_rad) * np.cos(distance / R)
-                                + np.cos(start_lat_rad) * np.sin(distance / R) * np.cos(bearing))
-        end_lon_rad = start_lon_rad + np.arctan2(np.sin(bearing) * np.sin(distance / R) * np.cos(start_lat_rad),
-                                                 np.cos(distance / R) - np.sin(start_lat_rad) * np.sin(end_lat_rad))
+        end_lat_rad = np.arcsin(
+            np.sin(start_lat_rad) * np.cos(distance / R)
+            + np.cos(start_lat_rad) * np.sin(distance / R) * np.cos(bearing)
+        )
+        end_lon_rad = start_lon_rad + np.arctan2(
+            np.sin(bearing) * np.sin(distance / R) * np.cos(start_lat_rad),
+            np.cos(distance / R) - np.sin(start_lat_rad) * np.sin(end_lat_rad),
+        )
         end_lat = np.degrees(end_lat_rad)
         end_lon = np.degrees(end_lon_rad)
 
@@ -74,31 +78,61 @@ class Test2DDataset:
     def generate_position_data(self):
         np.random.seed(0)
         timestamps = pd.date_range(start=self.timestamp, periods=self.total_points, freq=f"{1/self.sample_frequency}s")
-        self.df = pd.DataFrame(index=range(self.total_points), columns=["timestamp", "latitude", "longitude", "altitude_ato", "windspeed", "ch4", "temperature", "pressure"])
+        self.df = pd.DataFrame(
+            index=range(self.total_points),
+            columns=[
+                "timestamp",
+                "latitude",
+                "longitude",
+                "altitude_ato",
+                "windspeed",
+                "ch4",
+                "temperature",
+                "pressure",
+            ],
+        )
         self.df["timestamp"] = timestamps
 
-        lat_increment = (np.sin(np.radians(self.azimuth)) * self.transect_length) / self.points_per_transect / 111111  # 1 degree ~ 111111 meters
-        lon_increment = (np.cos(np.radians(self.azimuth)) * self.transect_length) / self.points_per_transect / (111111 * np.cos(np.radians(self.start_coords[0])))
+        lat_increment = (
+            (np.sin(np.radians(self.azimuth)) * self.transect_length) / self.points_per_transect / 111111
+        )  # 1 degree ~ 111111 meters
+        lon_increment = (
+            (np.cos(np.radians(self.azimuth)) * self.transect_length)
+            / self.points_per_transect
+            / (111111 * np.cos(np.radians(self.start_coords[0])))
+        )
 
-        lat_series = np.linspace(self.start_coords[0], self.start_coords[0] + lat_increment * self.points_per_transect, self.points_per_transect)
-        lon_series = np.linspace(self.start_coords[1], self.start_coords[1] + lon_increment * self.points_per_transect, self.points_per_transect)
+        lat_series = np.linspace(
+            self.start_coords[0],
+            self.start_coords[0] + lat_increment * self.points_per_transect,
+            self.points_per_transect,
+        )
+        lon_series = np.linspace(
+            self.start_coords[1],
+            self.start_coords[1] + lon_increment * self.points_per_transect,
+            self.points_per_transect,
+        )
 
         altitude_step = (self.altitude_ato_range[1] - self.altitude_ato_range[0]) / self.number_of_transects
 
         for i in range(self.number_of_transects):
             start_index = i * self.points_per_transect
             end_index = start_index + self.points_per_transect
-            self.df.loc[start_index:end_index - 1, "latitude"] = lat_series
-            self.df.loc[start_index:end_index - 1, "longitude"] = lon_series
-            self.df.loc[start_index:end_index - 1, "altitude_ato"] = self.altitude_ato_range[0] + i * altitude_step
+            self.df.loc[start_index : end_index - 1, "latitude"] = lat_series
+            self.df.loc[start_index : end_index - 1, "longitude"] = lon_series
+            self.df.loc[start_index : end_index - 1, "altitude_ato"] = self.altitude_ato_range[0] + i * altitude_step
 
         return self.df
 
     def generate_sample_data(self):
         np.random.seed(0)
-        self.df["windspeed"] = self.df["windspeed"] = np.random.uniform(self.windspeed_range[0], self.windspeed_range[1], self.total_points)
+        self.df["windspeed"] = self.df["windspeed"] = np.random.uniform(
+            self.windspeed_range[0], self.windspeed_range[1], self.total_points
+        )
         self.df["ch4"] = np.random.uniform(self.methane_range[0], self.methane_range[1], self.total_points)
-        self.df["co2"] = np.random.uniform(self.carbon_dioxide_range[0], self.carbon_dioxide_range[1], self.total_points)
+        self.df["co2"] = np.random.uniform(
+            self.carbon_dioxide_range[0], self.carbon_dioxide_range[1], self.total_points
+        )
         self.df["c2h6"] = np.random.uniform(self.ethane_range[0], self.ethane_range[1], self.total_points)
         self.df["winddir"] = self.azimuth
         self.df["temperature"] = self.temperature

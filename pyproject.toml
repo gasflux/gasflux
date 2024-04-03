@@ -30,8 +30,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 ignore = [
-    "G004",  # G004: Logging statement uses f-string
-    "PD901", # PD901: Using "df" as a variable name is not recommended
+    "G004",   # G004: Logging statement uses f-string
+    "PD901",  # PD901: Using "df" as a variable name is not recommended
+    "ISC001", # ISC001: Use of implicit string concatenation
 ]
 
 
