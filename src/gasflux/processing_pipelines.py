@@ -150,23 +150,21 @@ class CurtainPipeline:
                     df=self.df,
                     x="x",
                     y="altitude_ato",
-                    gas="ch4_kg_h_m2",
+                    gas=gas,
                     ordinary_kriging_settings=self.config["ordinary_kriging_settings"],
                     **self.config["variogram_settings"])
             logger.info(f"Kriged {self.name} {gas}")
 
         # Reporting
-        self.figs["scatter_3d"]["multigas"] = gasflux.plotting.scatter_3d_multigas(df=self.df, gases=self.gases)
-        self.figs["baseline"]["multigas"] = gasflux.plotting.baseline_plotting_multigas(self.figs["baseline"])
-        self.figs["contour"]["multigas"] = gasflux.plotting.contour_krig_multigas(self.figs["contour"])
-        # TODO add other figs
-
-        self.reports[gas] = gasflux.reporting.mass_balance_report(krig_params=self.krig_parameters["ch4"],  # TODO - fix
-                                                                  wind_fig=self.figs["wind_timeseries"],
-                                                                  baseline_fig=self.figs["baseline"]["multigas"],
-                                                                  threed_fig=self.figs["scatter_3d"]["multigas"],
-                                                                  krig_fig=self.figs["contour"]["multigas"],
-                                                                  windrose_fig=self.figs["windrose"])
+        for gas in self.gases:
+            self.reports[gas] = gasflux.reporting.mass_balance_report(
+                krig_params=self.krig_parameters[gas],
+                wind_fig=self.figs["wind_timeseries"],
+                baseline_fig=self.figs["baseline"][gas],
+                threed_fig=self.figs["scatter_3d"][gas],
+                krig_fig=self.figs["contour"][gas],
+                windrose_fig=self.figs["windrose"],
+            )
 
 
 def main() -> None:

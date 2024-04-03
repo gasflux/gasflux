@@ -1,6 +1,5 @@
 """arVious plotting functions mainly based around plotly."""
 
-from collections.abc import Iterable
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -30,7 +29,6 @@ styling = {
 
 def blank_figure():
     fig = go.Figure()
-
     return fig
 
 
@@ -80,9 +78,10 @@ def scatter_3d(
 
 def scatter_2d(
     df: pd.DataFrame,
-    x: str = "centred_azimuth",
+    x: str,
+    color: str,
     y: str = "altitude_ato",
-    color: str = "ch4_normalised",
+
     **kwargs,
 ):
     fig = px.scatter(
@@ -109,7 +108,7 @@ def scatter_2d(
     return fig
 
 
-def time_series(df: pd.DataFrame, y: str = "ch4", y2=None, color=None, split=None):
+def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -231,7 +230,7 @@ def windrose_process(df: pd.DataFrame):
         right=False,
     )
 
-    df["wind_direction_bin"] = pd.Categorical(df["wind_direction_bin"].map({"N1": "N", "N2": "N"}))
+    df["wind_direction_bin"] = df["wind_direction_bin"].replace({"N1": "N", "N2": "N"})
     df["beaufort"] = pd.cut(
         df["windspeed"],
         bins=[lower for lower, upper in beaufort.values()] + [list(beaufort.values())[-1][1]],
@@ -355,7 +354,13 @@ def outliers(original_data: pd.Series, fence_high: float, fence_low: float):
     return fig
 
 
-def contour_krig(df: pd.DataFrame, xx: np.ndarray, yy: np.ndarray, field: np.ndarray, x: str = "x", y: str = "z"):
+def contour_krig(df: pd.DataFrame,
+                 gas: str,
+                 xx: np.ndarray,
+                 yy: np.ndarray,
+                 field: np.ndarray,
+                 x: str = "x",
+                 y: str = "z") -> go.Figure:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -363,11 +368,11 @@ def contour_krig(df: pd.DataFrame, xx: np.ndarray, yy: np.ndarray, field: np.nda
             y=df[y],
             mode="markers",
             marker={
-                "color": df["ch4_normalised"],
+                "color": df[f"{gas}_normalised"],
                 "colorscale": styling["colorscale"],
                 "showscale": True,
                 "colorbar": {
-                    "title": "CH₄ (ppm)",
+                    "title": f"{gas} (ppm)",
                 },
             },
             showlegend=False,
@@ -449,7 +454,7 @@ def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
     return fig
 
 
-def slice_grid(df):
+def slice_grid(df, gas):
     fig, ax = plt.subplots(figsize=(20, 10))
     for i in range(df["slice"].max() - df["slice"].min() + 1):  # zero indexed
         df_slice = df[df["slice"] == i]
@@ -458,10 +463,10 @@ def slice_grid(df):
         x = sorted(df_slice["circumference_distance"].values)
         y = [ymin, ymax]
         xx, yy = np.meshgrid(x, y)
-        z = df_slice["ch4_kg_h_m2"].values
+        z = df_slice[f"{gas}_kg_h_m2"].values
         zz = np.array([z, z])
         ax.pcolormesh(
-            xx, yy, zz, cmap="viridis", shading="nearest", clim=(df["ch4_kg_h_m2"].min(), df["ch4_kg_h_m2"].max()),
+            xx, yy, zz, cmap="viridis", shading="nearest", clim=(df[f"{gas}_kg_h_m2"].min(), df[f"{gas}_kg_h_m2"].max()),
         )
         ax.set_ylim(df["altitude_ato"].min(), df["altitude_ato"].max())
     plt.axis("scaled")
@@ -496,170 +501,3 @@ def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudem
         pnt.description = f"Concentration: {row[column]} ppm"
 
     kml.save(output_file)
-
-
-def scatter_3d_multigas(df: pd.DataFrame | None = None,
-                        traces: dict[str, go.Scatter3d] | None = None,
-                        gases: Iterable | None = None,
-                        headings: bool = False) -> go.Figure:
-    """Function to make a multigas 3D graph with optional gas data.
-
-    Args:
-        df: DataFrame containing the gas data (default is an empty DataFrame).
-        traces: A dictionary of 3D scatter traces, where keys are the trace names and the values are the trace objects.
-        gases: Dictionary or list of gas names (default is None).
-        headings: Boolean indicating whether to include headings in the graph (default is False).
-
-    Returns:
-        fig: The generated 3D scatter plot figure.
-    """
-    fig = go.Figure()
-
-    if traces:
-        gases = list(traces.keys())
-        for trace in traces.values():
-            fig.add_trace(trace)
-    elif gases and df:
-        if isinstance(gases, dict):
-            gases = list(gases.keys())
-        for gas in gases:
-            scatterfig = scatter_3d(df, color=gas, colorbar_title=f"Normalised {gas.upper()} (ppm)", headings=headings)
-            fig.add_trace(scatterfig.data[0])
-    else:
-        raise ValueError("Multigas graph needs either traces or list of gases and a non-empty df")
-
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                buttons=list([
-                    dict(
-                        args=[{"visible": [gas == selected_gas for gas in gases]}],
-                        label=selected_gas,
-                        method="update",
-                    ) for selected_gas in gases
-                ]),
-                direction="down",
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.1,
-                xanchor="left",
-                y=1.1,
-                yanchor="top",
-            ),
-        ],
-    )
-
-    fig.update_layout(
-        scene=dict(
-            xaxis_title="Easting",
-            yaxis_title="Northing",
-            zaxis_title="Altitude ATO",
-        ),
-    )
-
-    return fig
-
-
-def baseline_plotting_multigas(gas_figs: dict):  # TODO: fix
-    # Create the initial figure
-    fig = go.Figure()
-
-    # Add dropdown menu
-    dropdown_buttons = []
-    for gas in gas_figs:
-        dropdown_buttons.append(dict(label=gas, method="update", args=[{"visible": [gas == g for g in gas_figs]}]))
-
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                active=0,
-                buttons=dropdown_buttons,
-                x=0.1,
-                y=1.1,
-                xanchor="left",
-                yanchor="top",
-            ),
-        ],
-    )
-
-    # Add traces for each gas
-    for gas_fig in gas_figs.values():
-        for trace in gas_fig.data:
-            fig.add_trace(trace)
-
-    # Set initial visibility based on the first gas
-    first_gas = next(iter(gas_figs.keys()))
-    for trace in fig.data:
-        trace.visible = trace.name.startswith(first_gas)
-
-    return fig
-
-
-def contour_krig_multigas(traces: dict[str, go.Figure]) -> go.Figure:
-    """Function to create a multigas contour plot with kriging interpolation.
-
-    Args:
-        traces: A dictionary of contour plot traces, where keys are trace names and the values are the trace objects.
-
-    Returns:
-        fig: The generated multigas contour plot figure.
-    """
-    fig = go.Figure()
-    gases = list(traces.keys())
-
-    for _gas, trace_fig in traces.items():
-        contour_trace = trace_fig.data[1]  # Assumes the contour trace is the second trace in each figure
-        fig.add_trace(contour_trace)
-
-        scatter_trace = trace_fig.data[0]  # Assumes the scatter trace is the first trace in each figure
-        # scatter_trace.marker.colorbar.title = f"{gas} (ppm)"
-        fig.add_trace(scatter_trace)
-
-    fig.update_xaxes(
-        showline=True,
-        linewidth=1,
-        linecolor="black",
-        title_text="Horizontal distance on projected flux plane (m)",
-        ticks="outside",
-        tickwidth=1,
-        tickcolor="black",
-        ticklen=5,
-        nticks=20,
-    )
-
-    fig.update_yaxes(
-        showline=True,
-        linewidth=1,
-        linecolor="black",
-        title_text="Height above ground level (m)",
-        ticks="outside",
-        tickwidth=1,
-        tickcolor="black",
-        ticklen=5,
-        nticks=10,
-    )
-
-    fig.layout.coloraxis.colorbar.title = "Emissions flux (kg⋅m⁻²⋅h⁻¹)"
-
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                buttons=list([
-                    dict(
-                        args=[{"visible": [gas == trace_gas for trace_gas in gases]}],
-                        label=gas,
-                        method="update",
-                    ) for gas in gases
-                ]),
-                direction="down",
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.1,
-                xanchor="left",
-                y=1.1,
-                yanchor="top",
-            ),
-        ],
-    )
-
-    return fig

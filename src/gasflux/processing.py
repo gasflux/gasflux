@@ -1,6 +1,7 @@
 """Processing function, usually implying some kind of filtering or data transformation."""
 
 from itertools import groupby
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -241,28 +242,45 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     return df_removed, df_retained
 
 
-# linear flight path functions
-def linear_reg_equation(B, x):
-    return B[0] * x + B[1]  # y = mx + c
+def orthogonal_distance_regression(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray[np.float64, Any]]:
+    """
+    Perform orthogonal distance regression on the given DataFrame.
 
+    Parameters:
+        df (pd.DataFrame): DataFrame containing "utm_easting" and "utm_northing" columns.
 
-def flight_odr_fit(df: pd.DataFrame):
+    Returns:
+        tuple[pd.DataFrame, np.ndarray[np.float64]]: Updated DataFrame with "distance_from_fit" column
+        and the fitted parameters (slope, intercept).
+    """
+    def linear_reg_equation(B, x):
+        return B[0] * x + B[1]  # y = mx + c
+
+    required_columns = ["utm_easting", "utm_northing"]
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(f"DataFrame must contain columns: {required_columns}")
+
     model = odr.Model(linear_reg_equation)
     data = odr.Data(df["utm_easting"], df["utm_northing"])
-    odr_instance = odr.ODR(data, model, beta0=[1, 0])  # initial guess of m=1, c=0
+
+    INITIAL_BETA = [1, 0]  # Initial guess of slope=1, intercept=0
+    odr_instance = odr.ODR(data, model, beta0=INITIAL_BETA)
     fit = odr_instance.run()
 
-    # add column of distance from linear fit
-    m, c = fit.beta
-    df = df.assign(distance_from_fit=abs((m * df["utm_easting"] - df["utm_northing"] + c) / np.sqrt(m**2 + 1)))
+    if fit.stopreason[0] == "Iteration limit reached":
+        raise RuntimeError("ODR fitting failed to converge")
+
+    slope, intercept = fit.beta
+    df = df.assign(distance_from_fit=abs((slope * df["utm_easting"] - df["utm_northing"] + intercept) / np.sqrt(slope**2 + 1)))
+
     return df, fit.beta
 
 
 # function to take a 3D plane that is near-linear in the xy and turn it into a linear plane with x as distance along the plane and y as depth into the plane
 def flatten_linear_plane(df: pd.DataFrame, distance_filter=10000) -> tuple[pd.DataFrame, float]:  # can specify a distance filter but it's best to do that somewhere else
-    df, coefs2D = flight_odr_fit(df)
+    df, coefs2D = orthogonal_distance_regression(df)
     df = df.loc[df["distance_from_fit"] < distance_filter, :]
-    df, coefs2D = flight_odr_fit(df)  # re-fit to filtered points
+    df, coefs2D = orthogonal_distance_regression(df)  # re-fit to filtered points
     df = df.loc[df["distance_from_fit"] < distance_filter, :]
     rotation = np.arctan(coefs2D[0])
     df.loc[:, "x"] = (df["utm_easting"] - df["utm_easting"].min()) * np.cos(-rotation) - (

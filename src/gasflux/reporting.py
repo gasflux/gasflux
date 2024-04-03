@@ -8,7 +8,7 @@ from plotly.io import to_html
 from . import plotting
 
 
-def mass_balance_report(krig_params: dict,  # noqa: PLR0913
+def mass_balance_report(krig_params: dict,
                         wind_fig: go.Figure,
                         baseline_fig: go.Figure,
                         threed_fig: go.Figure,

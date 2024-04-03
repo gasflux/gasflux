@@ -44,12 +44,13 @@ def ordinary_kriging(
     **variogram_settings,
 ):
     """Function to calculate the ordinary kriging of a gas in a dataframe, after calculating a semivariogram."""
+    gasflux = f"{gas}_kg_h_m2"
     skg.plotting.backend("plotly")  # type: ignore
-    variogram = directional_gas_variogram(df, x, y, gas, variogram_filter, **variogram_settings)
+    variogram = directional_gas_variogram(df, x, y, gasflux, variogram_filter, **variogram_settings)
     ok = skg.OrdinaryKriging(
         variogram,
         coordinates=df[[x, y]].to_numpy(),
-        values=df[gas].to_numpy(),
+        values=df[gasflux].to_numpy(),
         min_points=ordinary_kriging_settings["min_points"],
         max_points=ordinary_kriging_settings["max_points"],
     )
@@ -84,14 +85,15 @@ def ordinary_kriging(
     np.nan_to_num(error_1s, copy=False, nan=0)
     volume_error = simpsonintegrate(error_1s, x_cell_size, y_cell_size)
 
-    contour_plot = plotting.contour_krig(df, xx, yy, field, x, y)
+    contour_plot = plotting.contour_krig(df=df, gas=gas, xx=xx, yy=yy, field=field, x=x, y=y)
     grid_plot = plotting.heatmap_krig(xx, yy, field)
     output_text = (
-        f"The emissions flux is {volume:.3f}kgh⁻¹; "
+        f"The emissions flux of {gas.upper()} is {volume:.3f}kgh⁻¹; "
         f"the cut and fill volumes of the grid are {volumepos:.3f} and {volumeneg:.3f}kgh⁻¹. "
         f"The grid itself is {x_nodes}x{y_nodes} nodes, with nodes measuring {x_cell_size:.2f}m x {y_cell_size:.2f}m."
     )
     krig_variables = {
+        "gas": gas,
         "field": field,
         "fieldpos": fieldpos,
         "fieldneg": fieldneg,
