@@ -30,12 +30,9 @@ jobs:
         run: pip install -r dev-requirements.txt
         if: steps.cache.outputs.cache-hit != 'true'
 
-      - name: flake8
-        run: flake8 . --statistics
-
-      - name: isort
-        run: isort .
-
+      - name: ruff
+        run: ruff check .
+        
       - name: safety
         run: safety check --ignore=51668 --ignore=52495
 
