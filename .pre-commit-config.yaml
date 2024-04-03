@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v4.5.0
     hooks:
       - id: check-added-large-files # prevents giant files from being committed
         args: ["--maxkb=1024"]
@@ -9,10 +9,11 @@ repos:
       - id: check-case-conflict # checks for files that would conflict in case-insensitive filesystems
       - id: check-docstring-first # checks a common error of defining a docstring after code
       - id: check-executables-have-shebangs # ensures that (non-binary) executables have a shebang
-      - id: check-json
-      - id: check-merge-conflict
+      - id: pretty-format-json # pretty formats json files
+      - id: check-json # checks json files for syntax errors
+      - id: check-merge-conflict # prevents git merge conflicts from being committed (finds conflict markers)
       - id: check-shebang-scripts-are-executable # ensures that (non-binary) files with a shebang are executable
-      - id: check-toml
+      - id: check-toml # checks toml files for syntax errors
       - id: check-vcs-permalinks # ensures that links to vcs websites are permalinks
       - id: check-yaml # checks yaml files for parseable syntax
       - id: debug-statements # checks for debugger imports and py37+ `breakpoint()` calls in python source
@@ -23,25 +24,13 @@ repos:
       - id: mixed-line-ending # replaces or checks mixed line ending
         files: ^.*py$
       - id: no-commit-to-branch
-        args: ["--branch", "main"]
+        args: ["--branch", "main", "--branch", "develop"]
       - id: requirements-txt-fixer # sorts entries in requirements.txt
       - id: trailing-whitespace # trims trailing whitespace
         files: ^.*py$
 
   - repo: local
     hooks:
-      - id: flake8
-        name: flake8
-        entry: flake8 .
-        language: python
-        types: [python]
-
-      - id: isort
-        name: isort
-        entry: isort .
-        language: python
-        files: ^.*py$
-
       - id: nbdev
         name: nbdev clean
         entry: nbdev_clean --clear_all
@@ -60,4 +49,17 @@ repos:
         entry: vulture
         args: ["--min-confidence", "61"]
         language: python
+        files: ^.*py$
+
+      - id: ruff
+        name: ruff
+        entry: ruff
+        language: python
+        args: [--fix]
+        files: ^.*py$
+
+      - id: ruff-format
+        name: ruff-format
+        language: python
+        entry: ruff-format
         files: ^.*py$
