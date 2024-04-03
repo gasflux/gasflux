@@ -1,15 +1,18 @@
+"""Experimental module for machine learning flight filtering"""
+
 import os
 
 import joblib
 import pandas as pd
 
 from . import plotting
+import plotly.graph_objects as go
 
-model = None
-# Lazy loading: Load the model only if it hasn't been loaded yet
+model = None  # Lazy loading: Load the model only if it hasn't been loaded yet
 
 
 def load_model():
+    """Load the model from the model file path. If the model has already been loaded, return it."""
     global model
     if model is None:
         default_model_path = os.path.join(os.path.dirname(__file__), "resources/model.pkl")
@@ -30,13 +33,15 @@ def make_prediction(
     altitude_ato="altitude_ato",
     horiz_spd="horiz_spd",
     z_spd="z_spd",
-):
+) -> tuple[pd.DataFrame, go.Figure]:
     """Make predictions based on the input DataFrame and add them to the DataFrame.
     :param df: DataFrame containing the required features
     :param azimuth_heading: Name of the column containing the azimuth heading
     :param elevation_heading: Name of the column containing the elevation heading
     :param altitude_ato: Name of the column containing the altitude above take-off
     :param idx: Name of the column containing the index
+
+    return: Tuple of the DataFrame with the predictions and a Plotly 3D scatter plot of the predictions
     """
     model = load_model()
     # Ensure the DataFrame contains all the required features
