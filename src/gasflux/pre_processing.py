@@ -1,4 +1,5 @@
-"""Functions that organise the data into standard columns in pandas dataframes. Conversion functions (e.g. WGS84 to UTM) are here but transformations take place in processing.py"""
+"""Functions that organise the data into standard columns in pandas dataframes. Conversion functions (e.g. WGS84 to UTM)
+are here but transformations take place in processing.py"""
 
 import geopandas as gpd
 import numpy as np
@@ -57,8 +58,7 @@ def add_heading(df, rolling_window=1):
         np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"])).rolling(rolling_window).mean()
     )
     df["azimuth_heading"] = (
-        np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())).rolling(rolling_window).mean()
-        % 360
+        np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())).rolling(rolling_window).mean() % 360
     )
     return df
 
