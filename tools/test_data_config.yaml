@@ -1,0 +1,49 @@
+horizontal_pixels: 500 # Width of the concentration map in pixels
+vertical_pixels: 100 # Height of the concentration map in pixels
+num_plumes: 10 # Number of Gaussian plumes
+groupiness: 0.5 # Groupiness of the plumes (0.0 to 1.0)
+spread: 0.1 # Spread of the plumes (0.0 to 1.0)
+wind_reference_height: 10 # Reference height for wind speed calculation (m)
+wind_speed_avg: 5 # Average wind speed at 10m height (m/s)
+wind_speed_std: 1 # Standard deviation of wind speed at 10m height (m/s)
+surface_roughness: 0.1 # Surface roughness length (m)
+seed: 42 # Random seed for reproducibility
+wind_noise_percent: 30 # Percentage of noise to add to the wind speed map
+perlin_octaves: 4 # Number of octaves for perlin noise (1 to inf)
+perlin_persistence: 0.7 # Persistence of perlin noise (0.0 to 1.0)
+wind_direction_avg: 0 # Average wind direction in degrees (0 is towards the right)
+wind_direction_std: 10 # Standard deviation of wind direction in degrees
+wind_direction_noise_scale: 0.2 # Scale factor for wind direction noise
+timestamp: "2022-09-26 02:03:00"
+flight_time_seconds: 1000
+sample_frequency: 1
+start_coords:
+  - 54.87667
+  - 15.41
+transect_azimuth:
+  - 230
+sampling_altitude_ato_range:
+  - -10 # negative values should be fine
+  - 100
+sampling_horizontal_range:
+  - 50
+  - 950
+scene_altitude_range:
+  - -20
+  - 120
+scene_horizontal_range:
+  - 0
+  - 1000
+number_of_transects: 10
+gases:
+  ch4:
+    - 1.95
+    - 10.0
+  co2:
+    - 380.0
+    - 500.0
+  c2h6:
+    - 0.0
+    - 1.0
+temperature: 10.0
+pressure: 1000.0
