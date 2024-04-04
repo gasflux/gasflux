@@ -17,12 +17,9 @@ def simpsonintegrate(array: np.ndarray, x_cell_size: float, y_cell_size: float) 
     return vol_grid * x_cell_size * y_cell_size  # type: ignore
 
 
-def directional_gas_variogram(df: pd.DataFrame,
-                              x: str,
-                              z: str,
-                              gas: str,
-                              variogram_filter: float | None = None,
-                              **variogram_settings):
+def directional_gas_variogram(
+    df: pd.DataFrame, x: str, z: str, gas: str, variogram_filter: float | None = None, **variogram_settings
+):
     """Function to calculate the directional variogram - typically horizontally - of a gas in a dataframe."""
     if variogram_filter:
         df = df[df[gas] > variogram_filter]
@@ -66,7 +63,8 @@ def ordinary_kriging(
     x_cell_size = (x_max - x_min) / x_nodes
     y_cell_size = (y_max - y_min) / y_nodes
     xx, yy = np.mgrid[
-        x_min : x_max : x_nodes * 1j, y_min : y_max : y_nodes * 1j,  # type: ignore
+        x_min : x_max : x_nodes * 1j,
+        y_min : y_max : y_nodes * 1j,  # type: ignore
     ]  # type: ignore
     field = ok.transform(xx.flatten(), yy.flatten()).reshape(xx.shape)
 

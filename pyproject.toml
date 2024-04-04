@@ -24,7 +24,18 @@ optional-dependencies = { dev = { file = ["dev-requirements.txt"] } }
 [tool.mypy]
 ignore_missing_imports = true
 
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
 [tool.ruff.lint]
+ignore = [
+    "G004",   # G004: Logging statement uses f-string
+    "PD901",  # PD901: Using "df" as a variable name is not recommended
+    "ISC001", # ISC001: Use of implicit string concatenation
+]
+
+
 select = [
     "A",   # prevent using keywords that clobber python builtins
     "B",   # bugbear: security warnings
@@ -35,14 +46,5 @@ select = [
     "RUF", # the ruff developer's own rules
 ]
 
-[tool.ruff]
-line-length = 120
-ignore = [
-    "G004",  # G004: Logging statement uses f-string
-    "PD901", # PD901: Using "df" as a variable name is not recommended
-]
-target-version = "py311"
-
-
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"

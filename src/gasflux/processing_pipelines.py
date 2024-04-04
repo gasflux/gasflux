@@ -83,14 +83,15 @@ class CurtainPipeline:
         """Initialise the pipeline with the DataFrame, config, and name."""
         self.processing_time = datetime.now()
         self.dfs: dict = {}
-        self.figs: dict = {"baseline": {},
-                           "scatter_3d": {},
-                           "windrose": go.Figure,
-                           "wind_timeseries": go.Figure,
-                           "contour": {},
-                           "krig_grid": {},
-                           "semivariogram": {},
-                           }
+        self.figs: dict = {
+            "baseline": {},
+            "scatter_3d": {},
+            "windrose": go.Figure,
+            "wind_timeseries": go.Figure,
+            "contour": {},
+            "krig_grid": {},
+            "semivariogram": {},
+        }
         self.text: dict = {"krig_output": {}}
         self.std: dict = {}
         self.reports: dict = {}
@@ -109,8 +110,9 @@ class CurtainPipeline:
         self.df = gasflux.pre_processing.add_heading(self.df)
         # Baseline correction
         for gas in self.gases:
-            self.df, self.figs["baseline"][gas], self.text[f"baseline_{gas}"] = \
-                gasflux.baseline.baseline(df=self.df, gas=gas, algorithm=self.config["baseline_algorithm"])
+            self.df, self.figs["baseline"][gas], self.text[f"baseline_{gas}"] = gasflux.baseline.baseline(
+                df=self.df, gas=gas, algorithm=self.config["baseline_algorithm"]
+            )
             self.std[f"{gas}_baseline"] = np.std(self.df.loc[~self.df[f"{gas}_signal"], f"{gas}_normalised"])
         self.df_std = self.df.copy()
         # Filtering of flight
@@ -128,9 +130,9 @@ class CurtainPipeline:
 
         # Graphs
         for gas in self.gases:
-            self.figs["scatter_3d"][gas] = gasflux.plotting.scatter_3d(df=self.df,
-                                                                       color=gas,
-                                                                       colorbar_title=f"{gas.upper()} flux (kg/m²/h)")
+            self.figs["scatter_3d"][gas] = gasflux.plotting.scatter_3d(
+                df=self.df, color=gas, colorbar_title=f"{gas.upper()} flux (kg/m²/h)"
+            )
             self.figs["scatter_3d"][gas].add_trace(  # TODO - put this in plotting
                 go.Scatter3d(
                     x=self.dfs["removed"]["utm_easting"],
@@ -138,21 +140,27 @@ class CurtainPipeline:
                     z=self.dfs["removed"]["altitude_ato"],
                     mode="markers",
                     marker={"size": 2, "color": "black", "symbol": "circle", "opacity": 0.5},
-                ))
+                )
+            )
         self.figs["windrose"] = gasflux.plotting.windrose(self.df, plot_transect=True)
         self.figs["wind_timeseries"] = gasflux.plotting.time_series(self.df, y="windspeed", y2="winddir")
 
         # Interpolation
         for gas in self.gases:
-            self.krig_parameters[gas], self.text["krig_output"][gas], self.figs["contour"][gas], \
-                self.figs["krig_grid"][gas], self.figs["semivariogram"][gas] \
-                = gasflux.interpolation.ordinary_kriging(
-                    df=self.df,
-                    x="x",
-                    y="altitude_ato",
-                    gas=gas,
-                    ordinary_kriging_settings=self.config["ordinary_kriging_settings"],
-                    **self.config["variogram_settings"])
+            (
+                self.krig_parameters[gas],
+                self.text["krig_output"][gas],
+                self.figs["contour"][gas],
+                self.figs["krig_grid"][gas],
+                self.figs["semivariogram"][gas],
+            ) = gasflux.interpolation.ordinary_kriging(
+                df=self.df,
+                x="x",
+                y="altitude_ato",
+                gas=gas,
+                ordinary_kriging_settings=self.config["ordinary_kriging_settings"],
+                **self.config["variogram_settings"],
+            )
             logger.info(f"Kriged {self.name} {gas}")
 
         # Reporting

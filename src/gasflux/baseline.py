@@ -11,7 +11,7 @@ def baseline(
     df: pd.DataFrame,
     algorithm: str,
     gas: str,
-    ** kwargs,
+    **kwargs,
 ):
     df = df.copy()
     if len(df) < 20:

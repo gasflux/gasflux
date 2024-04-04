@@ -1,8 +1,6 @@
-"""arVious plotting functions mainly based around plotly."""
-
+"""Various plotting functions mainly based around plotly."""
 
 import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -56,10 +54,12 @@ def scatter_3d(
 
         if headings:
             custom_data.extend([df["elevation_heading"], df["azimuth_heading"]])
-            hovertemplate.extend([
-                "elevation heading: %{customdata[1]:.2f}",
-                "azimuth heading: %{customdata[2]:.2f}",
-            ])
+            hovertemplate.extend(
+                [
+                    "elevation heading: %{customdata[1]:.2f}",
+                    "azimuth heading: %{customdata[2]:.2f}",
+                ]
+            )
 
         fig.update_traces(
             marker=dict(
@@ -81,7 +81,6 @@ def scatter_2d(
     x: str,
     color: str,
     y: str = "altitude_ato",
-
     **kwargs,
 ):
     fig = px.scatter(
@@ -354,13 +353,9 @@ def outliers(original_data: pd.Series, fence_high: float, fence_low: float):
     return fig
 
 
-def contour_krig(df: pd.DataFrame,
-                 gas: str,
-                 xx: np.ndarray,
-                 yy: np.ndarray,
-                 field: np.ndarray,
-                 x: str = "x",
-                 y: str = "z") -> go.Figure:
+def contour_krig(
+    df: pd.DataFrame, gas: str, xx: np.ndarray, yy: np.ndarray, field: np.ndarray, x: str = "x", y: str = "z"
+) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -451,25 +446,6 @@ def heatmap_krig(xx: np.ndarray, yy: np.ndarray, field: np.ndarray):
         nticks=10,
     )
     fig.update_layout(coloraxis_colorbar=dict(len=0.25))
-    return fig
-
-
-def slice_grid(df, gas):
-    fig, ax = plt.subplots(figsize=(20, 10))
-    for i in range(df["slice"].max() - df["slice"].min() + 1):  # zero indexed
-        df_slice = df[df["slice"] == i]
-        ymin = df_slice["altitude_ato"].min()
-        ymax = df_slice["altitude_ato"].max()
-        x = sorted(df_slice["circumference_distance"].values)
-        y = [ymin, ymax]
-        xx, yy = np.meshgrid(x, y)
-        z = df_slice[f"{gas}_kg_h_m2"].values
-        zz = np.array([z, z])
-        ax.pcolormesh(
-            xx, yy, zz, cmap="viridis", shading="nearest", clim=(df[f"{gas}_kg_h_m2"].min(), df[f"{gas}_kg_h_m2"].max()),
-        )
-        ax.set_ylim(df["altitude_ato"].min(), df["altitude_ato"].max())
-    plt.axis("scaled")
     return fig
 
 

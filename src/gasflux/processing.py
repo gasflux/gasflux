@@ -1,5 +1,6 @@
 """Processing function, usually implying some kind of filtering or data transformation."""
 
+from matplotlib.figure import Figure
 from itertools import groupby
 from typing import Any
 
@@ -12,8 +13,22 @@ from scipy.signal import find_peaks
 from scipy.stats import circmean
 
 
-# this returns a bimodal heading from a dataframe. minimum difference is in degrees in case the modes are right next to each other
-def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=160):
+def bimodal_azimuth(
+    df: pd.DataFrame, heading_col: str = "azimuth_heading", min_altitude: int = 5, min_diff: int = 160
+) -> tuple[float, float]:
+    """
+    Identifies the two most frequent azimuth headings in the dataset, ensuring they are sufficiently
+    distinct. Filters data by altitude and removes NaNs before analysis.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe.
+        heading_col (str): Column name for azimuth heading data. Default is "azimuth_heading".
+        min_altitude (int): Minimum altitude for data to be included. Default is 5.
+        min_diff (int): Minimum difference between the two modes. Default is 160.
+
+    Returns:
+        tuple: Two modes of the azimuth heading.
+    """
     df = df[df["altitude_ato"] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = data[~np.isnan(data)]
@@ -30,18 +45,44 @@ def bimodal_azimuth(df, heading_col="azimuth_heading", min_altitude=5, min_diff=
 
 
 # this returns modes of slope from -90 to 90 degrees.
-def bimodal_elevation(df, heading_col="elevation_heading", min_altitude=5, max_slope=70):
+def bimodal_elevation(
+    df: pd.DataFrame, heading_col: str = "elevation_heading", min_altitude: int = 5, max_slope: int = 70
+) -> tuple[float, float]:
+    """
+    Identifies the most frequent elevation heading in the dataset, adjusted for vertical movements.
+    Filters data by altitude and removes NaNs before analysis.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe.
+        heading_col (str): Column name for elevation heading data. Default is "elevation_heading".
+        min_altitude (int): Minimum altitude for data to be included. Default is 5.
+        max_slope (int): Maximum slope to consider, avoTupleiding vertical movements. Default is 70.
+
+    Returns:
+        tuple: Mode of elevation heading and its negative, representing possible ascent/descent angles.
+    """
     df = df[df["altitude_ato"] >= min_altitude]
     data = df[heading_col].to_numpy()
     data = np.abs(data[~np.isnan(data)])
-    data = data[data < max_slope]  # to get around the edge case where vertical movements are modal
+    # to get around the edge case where vertical movements are modal
+    data = data[data < max_slope]
     hist, edges = np.histogram(data, bins=50)
     max_freq_idx = np.argsort(hist)[::-1][:2]
     mode = edges[max_freq_idx][0]
     return (mode, -mode)
 
 
-def altitude_transect_splitter(df):
+def altitude_transect_splitter(df: pd.DataFrame) -> tuple[pd.DataFrame, Figure]:
+    """
+    Splits the dataset into altitude-based transects and plots histogram peaks to identify prominent
+    altitude ranges.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe containing altitude data.
+
+    Returns:
+        tuple: Modified dataframe with transect labels and a figure showing the histogram with peaks.
+    """
     heights, bin_edges = np.histogram(df["altitude_ato"], bins=40)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     peaks, properties = find_peaks(heights)
@@ -54,46 +95,73 @@ def altitude_transect_splitter(df):
     ax.stairs(edges=bin_edges, values=heights, fill=True)
     ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
     ax.vlines(slice_edges, ymin=0, ymax=max(heights), color="red")
-    df["slice"] = pd.cut(df["altitude_ato"], bins=slice_edges, labels=False, include_lowest=True)  # type: ignore
+    df["slice"] = pd.cut(df["altitude_ato"], bins=list(slice_edges), labels=False, include_lowest=True)  # type: ignore
     return df, fig
 
 
-def add_transect_azimuth_switches(df):  # requires headings
-    df["transect"] = 0  # split into lines by incrementing based on azimuth heading switches
+def add_transect_azimuth_switches(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Identifies transects based on significant changes in azimuth heading, incrementing a transect
+    counter to distinguish different flight paths.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe with azimuth headings.
+
+    Returns:
+        pd.DataFrame: The modified dataframe with a new 'transect' column indicating transect IDs.
+    """
+    df["transect"] = 0
     df.loc[df["azimuth_heading"].diff().abs() > 150, "transect"] = 1
     df["transect"] = df["transect"].cumsum()
     return df
 
 
-def heading_filter(  # requires headings to be added already
-    df,
-    azimuth_filter,
-    azimuth_window,
-    elevation_filter,
-):
+def heading_filter(
+    df: pd.DataFrame, azimuth_filter: float, azimuth_window: int, elevation_filter: float
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Filters data based on specified azimuth and elevation headings, aiming to isolate transects that
+    align with main flight directions. First elevation is filtered to remove significant climbs or descents
+    (beware terrain-following flights). Bimodal azimuth headings are calculated and used to filter the
+    data based on the main flight directions, with a rolling mean applied (the window) to smooth the data.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe.
+        azimuth_filter (float): The tolerance for deviation from the main azimuth headings.
+        azimuth_window (int): The window size for rolling mean calculation of azimuth headings.
+        elevation_filter (float): The tolerance for deviation from horizontal flight.
+
+    Returns:
+        tuple: The filtered dataframe and the original unfiltered dataframe for comparison.
+    """
     df_unfiltered = df.copy()
-    # Filter out any transects where the absolute value of the elevation heading is greater than the elevation filter.
-    # This removes data that doesn't fall within a flat altitude_ato transect as it excludes instances where the drone is climbing or descending significantly.
     df_filtered = df_unfiltered[abs(df["elevation_heading"]) < elevation_filter]
 
-    # Compute the two main azimuths (azimuth is the direction along the horizon) of the data.
     azi1, azi2 = bimodal_azimuth(df_filtered)
     print(f"Drone appears to be flying mainly on the headings {azi1:.2f} degrees and {azi2:.2f} degrees")
 
-    # Filter the dataframe based on the azimuth heading. This is done in two steps:
-    # First, the function calculates a rolling average of the azimuth heading over a window of azimuth_window size, and compares this with the limits (azi1 +/- azimuth_filter) and (azi2 +/- azimuth_filter).
-    # This ensures that only data where the drone is mainly flying in the direction of azi1 or azi2 (within a margin of azimuth_filter degrees) is included.
     df_filtered = df_filtered[
         (df_filtered["azimuth_heading"].rolling(azimuth_window, center=True).mean() < azi1 + azimuth_filter)
         & (df_filtered["azimuth_heading"] > azi1 - azimuth_filter)
-        | (df_filtered["azimuth_heading"] < azi2 + azimuth_filter) & (df_filtered["azimuth_heading"] > azi2 - azimuth_filter)
+        | (df_filtered["azimuth_heading"] < azi2 + azimuth_filter)
+        & (df_filtered["azimuth_heading"] > azi2 - azimuth_filter)
     ]
 
     return df_filtered, df_unfiltered
 
 
-# function to return the start and end of the biggest monotonic series of values from a dictionary
-def mCount_max(dict):
+def mCount_max(data_dict: dict[int, float]) -> tuple[int, int]:
+    """
+    Finds the start and end of the longest monotonic sequence in a dictionary of floats, typically used
+    to identify a series of continuous altitude measurements. The first and last are retained.
+
+    Parameters:
+    data_dict (Dict[int, float]): Dictionary with sequential numeric keys and numeric values representing measures
+    such as altitude.
+
+    Returns:
+    tuple: Start and end indices of the longest monotonic sequence in the dictionary.
+    """
     poscount = 0
     negcount = 0
     max_pos_count = 0
@@ -102,13 +170,15 @@ def mCount_max(dict):
     max_neg_transect = 0
     pos_start = 0
     neg_start = 0
-    for i in range(1, len(dict)):
-        if dict[i] >= dict[i - 1]:
+
+    for i in range(1, len(data_dict)):
+        if data_dict[i] >= data_dict[i - 1]:
             poscount += 1
             negcount = 0
-        elif dict[i] < dict[i - 1]:
+        elif data_dict[i] < data_dict[i - 1]:
             negcount += 1
             poscount = 0
+
         if max_pos_count < poscount:
             max_pos_count = poscount
             max_pos_transect = i
@@ -117,30 +187,52 @@ def mCount_max(dict):
             max_neg_count = negcount
             max_neg_transect = i
             neg_start = i - negcount
+
     if max_pos_count > 0 or max_neg_count > 0:
         if max_pos_count >= max_neg_count:
             return pos_start, max_pos_transect
-        elif max_pos_count < max_neg_count:
+        else:
             return neg_start, max_neg_transect
     else:
         return 0, 0
 
 
-# this function sorts the data into transects based on azimuth switches and then filters to the biggest monotonic series of values
-def largest_monotonic_transect_series(df):
+def largest_monotonic_transect_series(df: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:
+    """
+    Filters the input dataframe to include only the largest continuous series of transects based on
+    monotonic altitude changes.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe with transect and altitude information.
+
+    Returns:
+        tuple: The filtered dataframe, start transect, and end transect of the largest monotonic series.
+    """
     df = add_transect_azimuth_switches(df)  # heading switches
     alt_dict = dict(df.groupby("transect")["altitude_ato"].mean())
     starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
-    df = df[(df["transect"] >= starttransect) & (df["transect"] <= endtransect)]  # filter to the biggest monotonic series of values
+    # filter to the biggest monotonic series of values
+    df = df[(df["transect"] >= starttransect) & (df["transect"] <= endtransect)]
     print(
-        f"Parsed a flight of {endtransect-starttransect} transects from {alt_dict[starttransect]:.0f}m to {alt_dict[endtransect]:.0f}m between the time of {df.index[0]} and {df.index[-1]}",
+        f"Parsed a flight of {endtransect-starttransect} transects from {alt_dict[starttransect]:.0f}m to \
+            {alt_dict[endtransect]:.0f}m between the time of {df.index[0]} and {df.index[-1]}",
     )
     return df, starttransect, endtransect
 
 
-# this function takes a pre-processed input of some transects and returns groups of transects in monotonic sequences according to altitude_ato
-# it's advisable to have each group also use the last transect from the previous group
-def monotonic_transect_groups(df):
+def monotonic_transect_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[int, str]]:
+    """
+    Groups transects into a dict of monotonic transect sequences based on altitude, facilitating analysis of continuous
+    flight patterns. Current behaviour is to reuse end transects of previous sequences as the start of the next.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe with transect and altitude information.
+
+    Returns:
+        tuple: The dataframe with a new 'group' column indicating the monotonic group ID, and a
+        dictionary mapping transects to group IDs.
+    """
+
     df = add_transect_azimuth_switches(df)
     alt_dict = dict(df.groupby("transect")["altitude_ato"].mean())
 
@@ -165,7 +257,8 @@ def monotonic_transect_groups(df):
                 current_group += 1  # Increment group counter
                 first_transect_in_series = True
             if current_trend == previous_trend or previous_trend is None:
-                first_transect_in_series = False  # this logic deals with the case where someone flies up, flies down one transect and then starts flying up again
+                # handles edge case where someone flies up, flies down one transect and then up again (yes really)
+                first_transect_in_series = False
             group_dict[transect] = f"Group_{current_group}"
             previous_trend = current_trend
         previous_altitude = altitude_ato
@@ -174,19 +267,39 @@ def monotonic_transect_groups(df):
     return df, group_dict
 
 
-# an attempt at better filter for only transects of interest
-# chain length is the number of consecutive points to make it a "transect", azimuth and elevation tolerances are in degrees; parallel_std_dev_tolerance is the std in meters of a 10-point sampled deviation from the longest segment
-# smoothing window is the number of points to smooth over for the azimuth and elevation headings. it is a median, as these tend to be single point
-def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_tolerance=40, smoothing_window=5):
+def remove_non_transects(
+    df: pd.DataFrame,
+    chain_length: int = 70,
+    azimuth_tolerance: int = 10,
+    elevation_tolerance: int = 40,
+    smoothing_window: int = 5,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Filters the dataframe to remove segments not matching the criteria for being considered as transects,
+    based on azimuth and elevation headings and segment length.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe.
+        chain_length (int): Minimum number of consecutive points to be considered a transect. Default is 70.
+        azimuth_tolerance (int): Tolerance for deviation from major azimuth headings. Default is 10.
+        elevation_tolerance (int): Tolerance for deviation from major elevation headings. Default is 40.
+        smoothing_window (int): Window size for rolling median smoothing of headings. Default is 5. Rolling median
+            avoids single point errors.
+
+    Returns:
+        tuple: Dataframes of removed segments and retained segments that fit transect criteria.
+    """
 
     def min_angular_diff_deg(x: float, y: float):
-        return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)  # deals with circular co-ordinates
+        # deals with circular co-ordinates
+        return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)
 
-    # returns a list of runs that are marked true
     def get_true_runs(mask):
         enumerated_mask = list(enumerate(mask))  # add index numbers to mask
-        groups = groupby(enumerated_mask, key=lambda x: x[1])  # group consecutive true/false values
-        true_runs = [list(group) for key, group in groups if key]  # retain groups of True values
+        # group consecutive true/false values
+        groups = groupby(enumerated_mask, key=lambda x: x[1])
+        # retain groups of True values
+        true_runs = [list(group) for key, group in groups if key]
         return true_runs
 
     def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=120):
@@ -214,14 +327,32 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     # Apply azimuth filter
     major_azi_headings = bimodal_azimuth(df, heading_col="azimuth_heading")
     major_elev_headings = bimodal_elevation(df, heading_col="elevation_heading")
+
     # Apply rolling median to azimuth and elevation headings and store them in new columns
-    df_removed["smoothed_azimuth_heading"] = df_removed["azimuth_heading"].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed["azimuth_heading"], inplace=False)
-    df_removed["smoothed_elevation_heading"] = df_removed["elevation_heading"].rolling(smoothing_window, center=True).apply(lambda x: circmean(x, 360, 0), raw=True).fillna(df_removed["elevation_heading"], inplace=False)
-    azimuth_mask = df_removed["smoothed_azimuth_heading"].apply(lambda x: any([min_angular_diff_deg(x, major) <= azimuth_tolerance for major in major_azi_headings]))
+    df_removed["smoothed_azimuth_heading"] = (
+        df_removed["azimuth_heading"]
+        .rolling(smoothing_window, center=True)
+        .apply(lambda x: circmean(x, 360, 0), raw=True)
+        .fillna(df_removed["azimuth_heading"], inplace=False)
+    )
+
+    df_removed["smoothed_elevation_heading"] = (
+        df_removed["elevation_heading"]
+        .rolling(smoothing_window, center=True)
+        .apply(lambda x: circmean(x, 360, 0), raw=True)
+        .fillna(df_removed["elevation_heading"], inplace=False)
+    )
+
+    azimuth_mask = df_removed["smoothed_azimuth_heading"].apply(
+        lambda x: any([min_angular_diff_deg(x, major) <= azimuth_tolerance for major in major_azi_headings])
+    )
+
     df_removed.loc[~azimuth_mask, "filtered_by_azimuth"] = True
 
     # Apply elevation filter
-    elevation_mask = df_removed["smoothed_elevation_heading"].apply(lambda x: any([min_angular_diff_deg(x, major) <= elevation_tolerance for major in major_elev_headings]))
+    elevation_mask = df_removed["smoothed_elevation_heading"].apply(
+        lambda x: any([min_angular_diff_deg(x, major) <= elevation_tolerance for major in major_elev_headings])
+    )
     df_removed.loc[~elevation_mask, "filtered_by_elevation"] = True
 
     # Combined mask for azimuth and elevation
@@ -234,7 +365,7 @@ def remove_non_transects(df, chain_length=70, azimuth_tolerance=10, elevation_to
     chain_filtered_indices = [point[0] for run in chain_filtered_runs for point in run]
     df_removed.loc[df_removed.index.difference(chain_filtered_indices), "filtered_by_chain"] = True
 
-    filtered_segments = [df_removed.iloc[run[0][0]:run[-1][0] + 1] for run in chain_filtered_runs]
+    filtered_segments = [df_removed.iloc[run[0][0] : run[-1][0] + 1] for run in chain_filtered_runs]
 
     df_retained = pd.concat(filtered_segments)
     df_removed = df_removed[~df_removed.index.isin(df_retained.index)]
@@ -250,9 +381,10 @@ def orthogonal_distance_regression(df: pd.DataFrame) -> tuple[pd.DataFrame, np.n
         df (pd.DataFrame): DataFrame containing "utm_easting" and "utm_northing" columns.
 
     Returns:
-        tuple[pd.DataFrame, np.ndarray[np.float64]]: Updated DataFrame with "distance_from_fit" column
+        tuple[pd.DataFrame, np.ndarray[np.float64, Any]]: Updated DataFrame with "distance_from_fit" column
         and the fitted parameters (slope, intercept).
     """
+
     def linear_reg_equation(B, x):
         return B[0] * x + B[1]  # y = mx + c
 
@@ -271,16 +403,30 @@ def orthogonal_distance_regression(df: pd.DataFrame) -> tuple[pd.DataFrame, np.n
         raise RuntimeError("ODR fitting failed to converge")
 
     slope, intercept = fit.beta
-    df = df.assign(distance_from_fit=abs((slope * df["utm_easting"] - df["utm_northing"] + intercept) / np.sqrt(slope**2 + 1)))
+    df = df.assign(
+        distance_from_fit=abs((slope * df["utm_easting"] - df["utm_northing"] + intercept) / np.sqrt(slope**2 + 1))
+    )
 
     return df, fit.beta
 
 
-# function to take a 3D plane that is near-linear in the xy and turn it into a linear plane with x as distance along the plane and y as depth into the plane
-def flatten_linear_plane(df: pd.DataFrame, distance_filter=10000) -> tuple[pd.DataFrame, float]:  # can specify a distance filter but it's best to do that somewhere else
+def flatten_linear_plane(df: pd.DataFrame, distance_filter: float = 10000) -> tuple[pd.DataFrame, float]:
+    """
+    Transforms a 3D dataset into a linear plane, focusing on the largest contiguous dataset aligned with
+    the plane's primary orientation. The new x coordinate is the distance along the plane, y is the distance
+    perpendicular to the plane (useful only for deviation), and z is the altitude.
+
+    Parameters:
+        df (pd.DataFrame): Input dataframe with "utm_easting", "utm_northing", and "altitude_ato" columns.
+        distance_filter (float): Threshold for filtering points based on their distance from the regression line.
+
+    Returns:
+        tuple: Modified dataframe with new 'x', 'y', and 'z' columns representing transformed coordinates,
+        and the plane's angle of rotation.
+    """
     df, coefs2D = orthogonal_distance_regression(df)
     df = df.loc[df["distance_from_fit"] < distance_filter, :]
-    df, coefs2D = orthogonal_distance_regression(df)  # re-fit to filtered points
+    df, coefs2D = orthogonal_distance_regression(df)  # this is intentionally done twice
     df = df.loc[df["distance_from_fit"] < distance_filter, :]
     rotation = np.arctan(coefs2D[0])
     df.loc[:, "x"] = (df["utm_easting"] - df["utm_easting"].min()) * np.cos(-rotation) - (
@@ -296,38 +442,65 @@ def flatten_linear_plane(df: pd.DataFrame, distance_filter=10000) -> tuple[pd.Da
 
 
 # function to set the edges of the linear plane based on not the top and bottom transects
-def x_filter(df, starttransect, endtransect, x="x", y="z"):
+def x_filter(df: pd.DataFrame, starttransect: int, endtransect: int, x: str = "x", y: str = "z") -> pd.DataFrame:
+    """
+    Filters the dataframe based on x-coordinates, limiting the dataset to points between specified transects.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe with 'x' and 'y' (or 'z') coordinates.
+        starttransect (int): The starting transect for filtering.
+        endtransect (int): The ending transect for filtering.
+        x (str): Column name for the x-coordinate. Default is 'x'.
+        y (str): Column name for the y-coordinate. Default is 'z'.
+
+    Returns:
+        pd.DataFrame: The filtered dataframe.
+    """
     bb_df = df[(df["transect"] > starttransect) & (df["transect"] < endtransect)]
     df = df[(df[x] >= bb_df[x].min()) & (df[x] <= bb_df[x].max())]
     return df
 
 
-# circular flight path functions
-def circle_deviation(df, x: str, y: str):
-    # select middle half of data to avoid edge effects
-    x, y = df[x], df[y]
+## Functions for circular transects ##
 
-    def midhalf(x):
+
+def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[np.ndarray, np.ndarray, float]:
+    """
+    Calculates the deviation of points from a fitted circle and their azimuth angles.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe containing the data.
+        x (str): Column name for the x-coordinate.
+        y (str): Column name for the y-coordinate.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray, float]: A tuple containing the deviations of each point from the circle,
+        their azimuth angles, and the radius of the fitted circle.
+    """
+    required_columns = [x_col, y_col]
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(f"DataFrame must contain columns: {required_columns}")
+
+    x = df[x_col]
+    y = df[y_col]
+
+    def midhalf(x):  # select middle half of data to avoid edge effects
         return x.iloc[int(len(x) * 1 / 4) : int(len(x) * 3 / 4)]
 
     x_filter, y_filter = midhalf(x), midhalf(y)
 
-    # fit circle to data
     def func(params):
         xc, yc, r = params
         return np.sqrt((x - xc) ** 2 + (y - yc) ** 2) - r
 
-    # initial guess for parameters
-    x_m = np.mean(x_filter)
-    y_m = np.mean(y_filter)
-    r_m = np.mean(np.sqrt((x_filter - x_m) ** 2 + (y_filter - y_m) ** 2))
+    x_m = np.mean(np.array(x_filter))  # initial guess for parameters
+    y_m = np.mean(np.array(y_filter))
+    r_m = np.mean(np.sqrt((np.array(x_filter) - x_m) ** 2 + (np.array(y_filter) - y_m) ** 2))
 
-    # fit circle
     params0 = np.array([x_m, y_m, r_m])
     result = least_squares(func, params0)
     xc, yc, r = result.x
 
-    # output deviation from circle for filtering purposes
     deviation = np.sqrt((x - xc) ** 2 + (y - yc) ** 2) - r
 
     # output azimuth in radians with 0 at north and increasing clockwise thanks to modulos
@@ -336,11 +509,24 @@ def circle_deviation(df, x: str, y: str):
     return deviation, azimuth, r
 
 
-def azimuth_of_max(df, x: str = "circ_azimuth", y: str = "ch4_normalised"):
-    return df.loc[df[y].idxmax()][x]
+def recentre_azimuth(df: pd.DataFrame, r: float, x: str = "circ_azimuth", y: str = "ch4_normalised") -> pd.DataFrame:
+    """
+    Recentres the azimuth angles based on the angle of maximum value and computes the distance along the
+    circumference of the circle.
 
+    Parameters:
+        df (pd.DataFrame): The input dataframe.
+        r (float): The radius of the circle.
+        x (str): Column name for azimuth angles. Default is 'circ_azimuth'.
+        y (str): Column name for the values used to find the maximum. Default is 'ch4_normalised'.
 
-def recentre_azimuth(df, r: float, x: str = "circ_azimuth", y: str = "ch4_normalised"):
+    Returns:
+        pd.DataFrame: The modified dataframe with centered azimuth angles and distances along the circumference.
+    """
+
+    def azimuth_of_max(df: pd.DataFrame, x: str = "circ_azimuth", y: str = "ch4_normalised") -> float:
+        return df.loc[df[y].idxmax()][x]
+
     centre_azimuth = azimuth_of_max(df, x, y)
     df["centred_azimuth"] = df[x] - centre_azimuth
     df.loc[df["centred_azimuth"] > 180, "centred_azimuth"] -= 360
@@ -351,17 +537,42 @@ def recentre_azimuth(df, r: float, x: str = "circ_azimuth", y: str = "ch4_normal
 
 
 # split data into two dataframes, one for each flight, based on the minimum altitude_ato
-def splittime(df):
+def splittime(df: pd.DataFrame) -> pd.Timestamp:
+    """
+    Determines the splitting time based on the minimum altitude in the dataset.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe with an 'altitude_ato' column.
+
+    Returns:
+        pd.Timestamp: The index value corresponding to the minimum altitude, used as a splitting point.
+    """
     minalt = df["altitude_ato"].min()
     splittime = df[df["altitude_ato"] == minalt].index[0]
     return splittime
 
 
-def wind_rel_ground(df, aircraft_u, aircraft_v, wind_u, wind_v):  # u = N, v = E
+def wind_rel_ground(
+    df: pd.DataFrame, aircraft_u: np.ndarray, aircraft_v: np.ndarray, wind_u: np.ndarray, wind_v: np.ndarray
+) -> pd.DataFrame:
+    """
+    Calculates wind speed and direction relative to the ground from aircraft and ambient wind vectors.
+    u = N, v = E
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe.
+        aircraft_u (np.ndarray): The northward component of the aircraft's velocity.
+        aircraft_v (np.ndarray): The eastward component of the aircraft's velocity.
+        wind_u (np.ndarray): The northward component of the wind's velocity.
+        wind_v (np.ndarray): The eastward component of the wind's velocity.
+
+    Returns:
+        pd.DataFrame: The dataframe updated with ground-relative wind speed and direction.
+    """
     u_wind_ground = wind_u - aircraft_u
     v_wind_ground = wind_v - aircraft_v
-    windspd_ground = np.sqrt(u_wind_ground**2 + v_wind_ground**2)
+    windspeed_ground = np.sqrt(u_wind_ground**2 + v_wind_ground**2)
     winddir_ground = np.degrees(np.arctan2(u_wind_ground, v_wind_ground) % (2 * np.pi))
-    df["windspd_ground"] = windspd_ground
+    df["windspeed_ground"] = windspeed_ground
     df["winddir_ground"] = winddir_ground
     return df
