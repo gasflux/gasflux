@@ -229,7 +229,9 @@ def windrose_process(df: pd.DataFrame):
         right=False,
     )
 
-    df["wind_direction_bin"] = df["wind_direction_bin"].replace({"N1": "N", "N2": "N"})
+    df["wind_direction_bin"] = (
+        df["wind_direction_bin"].map(lambda x: "N" if x in ["N1", "N2"] else x).astype("category")
+    )
     df["beaufort"] = pd.cut(
         df["windspeed"],
         bins=[lower for lower, upper in beaufort.values()] + [list(beaufort.values())[-1][1]],

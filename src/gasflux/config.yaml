@@ -16,7 +16,7 @@ variogram_settings:
   bin_func: even
   fit_method: lm
   maxlag: 100
-  fit_sigma: linear
+  #  fit_sigma: linear # this should allow for a spatial uncertainty but currently producing bugs
   tolerance: 10
   azimuth: 0
   bandwidth: 20
@@ -35,7 +35,3 @@ required_cols:
   winddir: [0, 360]
   temperature: [-50, 60]
   pressure: [900, 1100]
-
-
-
-

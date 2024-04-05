@@ -58,7 +58,7 @@ class DataValidator:  # TODO(me): decide whether to move this to preprocessing
         missing_cols = set(self.required_cols) - set(self.df.columns)
         if missing_cols:
             logging.error(f"Missing or mislabelled columns: {missing_cols}")
-            raise
+            raise ValueError(f"Missing or mislabelled columns: {missing_cols}")
 
     def _check_dtypes(self) -> None:
         """Check that the required columns are of the correct type and do not contain NaN values."""
