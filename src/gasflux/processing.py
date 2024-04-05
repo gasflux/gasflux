@@ -46,7 +46,7 @@ def bimodal_azimuth(
 
 # this returns modes of slope from -90 to 90 degrees.
 def bimodal_elevation(
-    df: pd.DataFrame, heading_col: str = "elevation_heading", min_altitude: int = 5, max_slope: int = 70
+    df: pd.DataFrame, heading_col: str = "elevation_heading", min_flight_altitude: float = 5, max_slope: float = 70
 ) -> tuple[float, float]:
     """
     Identifies the most frequent elevation heading in the dataset, adjusted for vertical movements.
@@ -61,7 +61,7 @@ def bimodal_elevation(
     Returns:
         tuple: Mode of elevation heading and its negative, representing possible ascent/descent angles.
     """
-    df = df[df["altitude_ato"] >= min_altitude]
+    df = df[df["altitude_ato"] >= df["altitude_ato"].min() + min_flight_altitude]
     data = df[heading_col].to_numpy()
     data = np.abs(data[~np.isnan(data)])
     # to get around the edge case where vertical movements are modal
