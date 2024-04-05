@@ -4,24 +4,22 @@ num_plumes: 10 # Number of Gaussian plumes
 groupiness: 0.5 # Groupiness of the plumes (0.0 to 1.0)
 spread: 0.1 # Spread of the plumes (0.0 to 1.0)
 wind_reference_height: 10 # Reference height for wind speed calculation (m)
-wind_speed_avg: 5 # Average wind speed at 10m height (m/s)
-wind_speed_std: 1 # Standard deviation of wind speed at 10m height (m/s)
+windspeed_avg: 5 # Average wind speed at 10m height (m/s)
+windspeed_rel_std: 0.2 # Relative standard deviation of wind speed (0.0 to inf), recommend 0.2-0.4
 surface_roughness: 0.1 # Surface roughness length (m)
 seed: 42 # Random seed for reproducibility
-wind_noise_percent: 30 # Percentage of noise to add to the wind speed map
-perlin_octaves: 4 # Number of octaves for perlin noise (1 to inf)
-perlin_persistence: 0.7 # Persistence of perlin noise (0.0 to 1.0)
-wind_direction_avg: 0 # Average wind direction in degrees (0 is towards the right)
-wind_direction_std: 10 # Standard deviation of wind direction in degrees
-wind_direction_noise_scale: 0.2 # Scale factor for wind direction noise
+simplex_octaves: 4 # Number of octaves for simplex noise (1 to inf, def 1)
+simplex_persistence: 0.7 # Persistence of simplex noise (0.0 to 1.0, def 0.5) - specifies the amplitude of each octave relative to the one below it
+simplex_lacunarity: 2.0 # Lacunarity of simplex noise (1.0 to inf, def 2.0) - specifies the frequency of each octave relative to the one below it
+winddir_avg: 0.0 # Average wind direction in degrees rel to plane (0 is CW)
+winddir_std: 10 # Standard deviation of wind direction in degrees
 timestamp: "2022-09-26 02:03:00"
 flight_time_seconds: 1000
 sample_frequency: 1
 start_coords:
   - 54.87667
   - 15.41
-transect_azimuth:
-  - 230
+transect_azimuth: 260 # the wind will start off 90 degrees CW to this azimuth, and is modified relative to that by the winddir_avg. 260 is a good value to test N problems
 sampling_altitude_ato_range:
   - -10 # negative values should be fine
   - 100
