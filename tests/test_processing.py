@@ -43,8 +43,8 @@ def test_bimodal_elevation():
 
 def test_altitude_transect_splitter():
     df = load_cols(["altitude_ato"])
-    df = gasflux.processing.altitude_transect_splitter(df)
-    assert df["transect_num"], "Dataframe was not split into transects"
+    df, fig = gasflux.processing.altitude_transect_splitter(df)
+    assert "transect_num" in df.columns, "Transect number column not added to dataframe"
     assert (
         df["transect_num"].nunique() == testconfig["number_of_transects"]
     ), "Dataframe was not split into the right number of transects"

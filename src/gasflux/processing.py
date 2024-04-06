@@ -75,7 +75,7 @@ def bimodal_elevation(
 def altitude_transect_splitter(df: pd.DataFrame) -> tuple[pd.DataFrame, Figure]:
     """
     Splits the dataset into altitude-based transects and plots histogram peaks to identify prominent
-    altitude ranges.
+    altitude ranges. Only works if the flights are flat.
 
     Parameters:
         df (pd.DataFrame): The input dataframe containing altitude data.
@@ -84,14 +84,18 @@ def altitude_transect_splitter(df: pd.DataFrame) -> tuple[pd.DataFrame, Figure]:
         tuple: Modified dataframe with transect labels and a figure showing the histogram with peaks.
     """
     df = df.copy()
-    heights, bin_edges = np.histogram(df["altitude_ato"], bins=40)
+    altitudes = df["altitude_ato"].to_numpy()
+    heights, bin_edges = np.histogram(altitudes, bins=40)
+    bin_width = bin_edges[1] - bin_edges[0]
+    bin_edges = np.append(altitudes.min() - bin_width, bin_edges)  # avoid literal edge effects
+    bin_edges = np.append(bin_edges, altitudes.max() + bin_width)
+    heights = np.append(0, heights)
+    heights = np.append(heights, 0)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     peaks, properties = find_peaks(heights)
-    bin_centers[peaks]
-
     transect_edges = (bin_centers[peaks][:-1] + bin_centers[peaks][1:]) / 2
-    transect_edges = np.append(df["altitude_ato"].min(), transect_edges)
-    transect_edges = np.append(transect_edges, df["altitude_ato"].max())
+    transect_edges = np.append(altitudes.min(), transect_edges)
+    transect_edges = np.append(transect_edges, altitudes.max())
     fig, ax = plt.subplots()
     ax.stairs(edges=bin_edges, values=heights, fill=True)
     ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
