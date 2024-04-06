@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.11']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
       - uses: actions/checkout@v3
@@ -34,7 +34,7 @@ jobs:
         run: ruff check .
         
       - name: safety
-        run: safety check --ignore=51668 --ignore=52495
+        run: safety check  # --ignore=51668 --ignore=52495
 
   tests:
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: x64
+          # architecture: x64
 
       - name: Install Dependencies
         run: pip install -r requirements.txt
@@ -62,5 +62,5 @@ jobs:
         run: pip install -r dev-requirements.txt
         if: steps.cache.outputs.cache-hit != 'true'
 
-#      - name: pytest
-#        run: PYTHONPATH=$PWD pytest tests/
+     - name: pytest
+       run: PYTHONPATH=$PWD pytest tests/
