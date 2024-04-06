@@ -235,6 +235,10 @@ def mCount_max(data_dict: dict[int, float]) -> tuple[int, int]:
     Returns:
     tuple: Start and end indices of the longest monotonic sequence in the dictionary.
     """
+    if len(data_dict) < 2:
+        raise ValueError("Dictionary must contain at least two values")
+    if list(data_dict.keys()) != list(range(1, len(data_dict) + 1)):
+        raise ValueError("Keys must be sequential integers starting from 1")
     poscount = 0
     negcount = 0
     max_pos_count = 0
@@ -244,7 +248,7 @@ def mCount_max(data_dict: dict[int, float]) -> tuple[int, int]:
     pos_start = 0
     neg_start = 0
 
-    for i in range(1, len(data_dict)):
+    for i in range(2, len(data_dict) + 1):
         if data_dict[i] >= data_dict[i - 1]:
             poscount += 1
             negcount = 0
@@ -282,7 +286,7 @@ def largest_monotonic_transect_series(df: pd.DataFrame) -> tuple[pd.DataFrame, i
         tuple: The filtered dataframe, start transect, and end transect of the largest monotonic series.
     """
     df = add_transect_azimuth_switches(df)  # heading switches
-    alt_dict = dict(df.groupby("transect")["altitude_ato"].mean())
+    alt_dict = dict(df.groupby("transect_num")["altitude_ato"].mean())
     starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
     # filter to the biggest monotonic series of values
     df = df[(df["transect_num"] >= starttransect) & (df["transect_num"] <= endtransect)]
@@ -442,43 +446,6 @@ def remove_non_transects(
     return df_removed, df_retained
 
 
-def orthogonal_distance_regression(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray[np.float64, Any]]:
-    """
-    Perform orthogonal distance regression on the given DataFrame.
-
-    Parameters:
-        df (pd.DataFrame): DataFrame containing "utm_easting" and "utm_northing" columns.
-
-    Returns:
-        tuple[pd.DataFrame, np.ndarray[np.float64, Any]]: Updated DataFrame with "distance_from_fit" column
-        and the fitted parameters (slope, intercept).
-    """
-
-    def linear_reg_equation(B, x):
-        return B[0] * x + B[1]  # y = mx + c
-
-    required_columns = ["utm_easting", "utm_northing"]
-    if not all(col in df.columns for col in required_columns):
-        raise ValueError(f"DataFrame must contain columns: {required_columns}")
-
-    model = odr.Model(linear_reg_equation)
-    data = odr.Data(df["utm_easting"], df["utm_northing"])
-
-    INITIAL_BETA = [1, 0]  # Initial guess of slope=1, intercept=0
-    odr_instance = odr.ODR(data, model, beta0=INITIAL_BETA)
-    fit = odr_instance.run()
-
-    if fit.stopreason[0] == "Iteration limit reached":
-        raise RuntimeError("ODR fitting failed to converge")
-
-    slope, intercept = fit.beta
-    df = df.assign(
-        distance_from_fit=abs((slope * df["utm_easting"] - df["utm_northing"] + intercept) / np.sqrt(slope**2 + 1))
-    )
-
-    return df, fit.beta
-
-
 def flatten_linear_plane(df: pd.DataFrame, distance_filter: float = 10000) -> tuple[pd.DataFrame, float]:
     """
     Transforms a 3D dataset into a linear plane, focusing on the largest contiguous dataset aligned with
@@ -493,6 +460,43 @@ def flatten_linear_plane(df: pd.DataFrame, distance_filter: float = 10000) -> tu
         tuple: Modified dataframe with new 'x', 'y', and 'z' columns representing transformed coordinates,
         and the plane's angle of rotation.
     """
+
+    def orthogonal_distance_regression(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray[np.float64, Any]]:
+        """
+        Perform orthogonal distance regression on the given DataFrame.
+
+        Parameters:
+            df (pd.DataFrame): DataFrame containing "utm_easting" and "utm_northing" columns.
+
+        Returns:
+            tuple[pd.DataFrame, np.ndarray[np.float64, Any]]: Updated DataFrame with "distance_from_fit" column
+            and the fitted parameters (slope, intercept).
+        """
+
+        def linear_reg_equation(B, x):
+            return B[0] * x + B[1]  # y = mx + c
+
+        required_columns = ["utm_easting", "utm_northing"]
+        if not all(col in df.columns for col in required_columns):
+            raise ValueError(f"DataFrame must contain columns: {required_columns}")
+
+        model = odr.Model(linear_reg_equation)
+        data = odr.Data(df["utm_easting"], df["utm_northing"])
+
+        INITIAL_BETA = [1, 0]  # Initial guess of slope=1, intercept=0
+        odr_instance = odr.ODR(data, model, beta0=INITIAL_BETA)
+        fit = odr_instance.run()
+
+        if fit.stopreason[0] == "Iteration limit reached":
+            raise RuntimeError("ODR fitting failed to converge")
+
+        slope, intercept = fit.beta
+        df = df.assign(
+            distance_from_fit=abs((slope * df["utm_easting"] - df["utm_northing"] + intercept) / np.sqrt(slope**2 + 1))
+        )
+
+        return df, fit.beta
+
     df, coefs2D = orthogonal_distance_regression(df)
     df = df.loc[df["distance_from_fit"] < distance_filter, :]
     df, coefs2D = orthogonal_distance_regression(df)  # this is intentionally done twice
@@ -510,27 +514,7 @@ def flatten_linear_plane(df: pd.DataFrame, distance_filter: float = 10000) -> tu
     return df, plane_angle
 
 
-# function to set the edges of the linear plane based on not the top and bottom transects
-def x_filter(df: pd.DataFrame, starttransect: int, endtransect: int, x: str = "x", y: str = "z") -> pd.DataFrame:
-    """
-    Filters the dataframe based on x-coordinates, limiting the dataset to points between specified transects.
-
-    Parameters:
-        df (pd.DataFrame): The input dataframe with 'x' and 'y' (or 'z') coordinates.
-        starttransect (int): The starting transect for filtering.
-        endtransect (int): The ending transect for filtering.
-        x (str): Column name for the x-coordinate. Default is 'x'.
-        y (str): Column name for the y-coordinate. Default is 'z'.
-
-    Returns:
-        pd.DataFrame: The filtered dataframe.
-    """
-    bb_df = df[(df["transect_num"] > starttransect) & (df["transect_num"] < endtransect)]
-    df = df[(df[x] >= bb_df[x].min()) & (df[x] <= bb_df[x].max())]
-    return df
-
-
-## Functions for circular transects ##
+## Functions for circular/spiral flights ##
 
 
 def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[np.ndarray, np.ndarray, float]:
@@ -605,27 +589,11 @@ def recentre_azimuth(df: pd.DataFrame, r: float, x: str = "circ_azimuth", y: str
     return df
 
 
-# split data into two dataframes, one for each flight, based on the minimum altitude_ato
-def splittime(df: pd.DataFrame) -> pd.Timestamp:
-    """
-    Determines the splitting time based on the minimum altitude in the dataset.
-
-    Parameters:
-        df (pd.DataFrame): The input dataframe with an 'altitude_ato' column.
-
-    Returns:
-        pd.Timestamp: The index value corresponding to the minimum altitude, used as a splitting point.
-    """
-    minalt = df["altitude_ato"].min()
-    splittime = df[df["altitude_ato"] == minalt].index[0]
-    return splittime
-
-
 def wind_rel_ground(
     df: pd.DataFrame, aircraft_u: np.ndarray, aircraft_v: np.ndarray, wind_u: np.ndarray, wind_v: np.ndarray
 ) -> pd.DataFrame:
     """
-    Calculates wind speed and direction relative to the ground from aircraft and ambient wind vectors.
+    Calculates wind speed and direction relative to the ground from aircraft and airspeed vectors.
     u = N, v = E
 
     Parameters:

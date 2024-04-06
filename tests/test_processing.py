@@ -97,3 +97,39 @@ def test_heading_filter():
     assert (
         df_filtered["near_mode1"].any() or df_filtered["near_mode2"].any()
     ), "Filtered dataframe does not contain expected azimuth or its reciprocal within the window"
+
+
+def test_mCount_max():
+    data_dict = {1: -5.4, 2: 0.6, 3: 5.6, 4: 3.2, 5: 10.4, 6: 18.4, 7: 20.8, 8: 19.4}
+    start, end = gasflux.processing.mCount_max(data_dict)
+    assert start == 4, "Start index of max count not calculated correctly"
+    assert end == 7, "End index of max count not calculated correctly"
+
+
+def test_largest_monotonic_transect_series():
+    df = load_cols(["altitude_ato", "azimuth_heading", "longitude", "latitude", "utm_easting", "utm_northing"])
+    df, starttransect, endtransect = gasflux.processing.largest_monotonic_transect_series(df)
+    starttransect = 1
+    endtransect = testconfig["number_of_transects"]
+    assert starttransect == starttransect, "Start index of largest monotonic transect not calculated correctly"
+    assert endtransect == endtransect, "End index of largest monotonic transect not calculated correctly"
+
+
+def test_remove_non_transects():
+    df = load_cols(
+        ["altitude_ato", "azimuth_heading", "elevation_heading", "longitude", "latitude", "utm_easting", "utm_northing"]
+    )
+    retained_df, removed_df = gasflux.processing.remove_non_transects(df)
+    assert retained_df is not None, "Retained dataframe is None"
+    assert removed_df is not None, "Removed dataframe is None"
+
+
+def test_flatten_linear_plane():
+    df = load_cols(["altitude_ato", "utm_easting", "utm_northing"])
+    df, plane_angle = gasflux.processing.flatten_linear_plane(df)
+    plane_angle = np.degrees(plane_angle)
+    input_plane_angle = testconfig["transect_azimuth"]
+    reciprocal_plane_angle = (input_plane_angle + 180) % 360
+    assert (
+        circ_dist(plane_angle, input_plane_angle) < 3 or circ_dist(plane_angle, reciprocal_plane_angle) < 3
+    ), "Plane angle not calculated correctly"
