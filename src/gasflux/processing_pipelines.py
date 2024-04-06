@@ -124,6 +124,9 @@ class CurtainPipeline:
         # Orthogonal distance regression to flatten the plane
         self.df, self.plane_angle = gasflux.processing.flatten_linear_plane(self.df)
 
+        # Deal with wind data direction offset
+        self.df = gasflux.processing.wind_offset_correction(self.df, self.plane_angle)
+
         # Add flux column based on wind speed and direction
         for gas in self.gases:
             self.df = gasflux.gas.gas_flux_column(self.df, gas)

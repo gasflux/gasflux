@@ -3,7 +3,8 @@ import gasflux
 import yaml
 from pathlib import Path
 import numpy as np
-from gasflux.processing import circ_dist
+from gasflux.processing import min_angular_displacement
+import pytest
 
 
 testdf = pd.read_csv(Path(__file__).parent / "data" / "testdata.csv")
@@ -17,7 +18,7 @@ def load_cols(cols):
 def test_min_angular_diff_def():
     a = 0
     b = 359
-    diff = gasflux.processing.circ_dist(a, b)
+    diff = gasflux.processing.min_angular_displacement(a, b)
     assert diff == 1, "Angular difference not calculated correctly"
 
 
@@ -27,21 +28,55 @@ def test_circ_median():
     assert median == 1.5, "Circular median not calculated correctly"
 
 
+@pytest.mark.parametrize(
+    "plane_angle,expected_winddir_rel,expected_windspeed_normal",
+    [
+        (
+            90,
+            [0, 90, 0, 90, 0],
+            [5, 0, 5, 0, 5],
+        ),
+        (
+            30,
+            [60, 30, 60, 30, 60],
+            np.array([1 / 2, np.sqrt(3) / 2, 1 / 2, np.sqrt(3) / 2, 1 / 2]) * 5,
+        ),
+        (
+            60,
+            [30, 60, 30, 60, 30],
+            np.array([np.sqrt(3) / 2, 1 / 2, np.sqrt(3) / 2, 1 / 2, np.sqrt(3) / 2]) * 5,
+        ),
+    ],
+)
+def test_wind_offset_correction_parametrized(plane_angle, expected_winddir_rel, expected_windspeed_normal):
+    data = {"winddir": [0, 90, 180, 270, 360], "windspeed": [5, 5, 5, 5, 5]}
+    df = pd.DataFrame(data)
+    corrected_df = gasflux.processing.wind_offset_correction(df, plane_angle)
+    assert "winddir_rel" in corrected_df.columns, f"Relative wind direction column not added for angle {plane_angle}"
+    assert "windspeed_normal" in corrected_df.columns, f"Normalised wind speed column not added for angle {plane_angle}"
+    assert np.allclose(
+        corrected_df["winddir_rel"], expected_winddir_rel, rtol=1e-5, atol=1e-10
+    ), f"Relative wind directions not calculated correctly for angle {plane_angle}"
+    assert np.allclose(
+        corrected_df["windspeed_normal"], expected_windspeed_normal, rtol=1e-5, atol=1e-10
+    ), f"Normalised wind speeds not calculated correctly for angle {plane_angle}"
+
+
 def test_bimodal_azimuth():
     input_mode = testconfig["transect_azimuth"]
     input_reciprocal_mode = (input_mode + 180) % 360
     df = load_cols(["azimuth_heading", "altitude_ato"])
     mode1, mode2 = gasflux.processing.bimodal_azimuth(df)
     assert (
-        circ_dist(mode1, input_mode) < 3 or circ_dist(mode1, input_reciprocal_mode) < 3
+        min_angular_displacement(mode1, input_mode) < 3 or min_angular_displacement(mode1, input_reciprocal_mode) < 3
     ), "Mode1 does not match expected azimuth or its reciprocal within 3 degrees"
 
-    if circ_dist(mode1, input_mode) < 3:
+    if min_angular_displacement(mode1, input_mode) < 3:
         assert (
-            circ_dist(mode2, input_reciprocal_mode) < 3
+            min_angular_displacement(mode2, input_reciprocal_mode) < 3
         ), "Mode2 does not match expected reciprocal azimuth within 3 degrees"
     else:
-        assert circ_dist(mode2, input_mode) < 3, "Mode2 does not match expected azimuth within 3 degrees"
+        assert min_angular_displacement(mode2, input_mode) < 3, "Mode2 does not match expected azimuth within 3 degrees"
 
 
 def test_bimodal_elevation():
@@ -50,14 +85,16 @@ def test_bimodal_elevation():
     input_reciprocal_mode = 0 - input_mode
     mode1, mode2 = gasflux.processing.bimodal_elevation(df)
     assert (
-        circ_dist(mode1, input_mode) < 3 or circ_dist(mode1, input_reciprocal_mode) < 3
+        min_angular_displacement(mode1, input_mode) < 3 or min_angular_displacement(mode1, input_reciprocal_mode) < 3
     ), "Mode1 does not match expected elevation or its reciprocal within 3 degrees"
-    if circ_dist(mode1, input_mode) < 3:
+    if min_angular_displacement(mode1, input_mode) < 3:
         assert (
-            circ_dist(mode2, input_reciprocal_mode) < 3
+            min_angular_displacement(mode2, input_reciprocal_mode) < 3
         ), "Mode2 does not match expected reciprocal elevation within 3 degrees"
     else:
-        assert circ_dist(mode2, input_mode) < 3, "Mode2 does not match expected elevation within 3 degrees"
+        assert (
+            min_angular_displacement(mode2, input_mode) < 3
+        ), "Mode2 does not match expected elevation within 3 degrees"
 
 
 def test_altitude_transect_splitter():
@@ -89,10 +126,10 @@ def test_heading_filter():
     input_reciprocal_mode = (input_mode + 180) % 360
     # assert that the filtered dataframe contains the expected azimuth or its reciprocal within the window
     df_filtered["near_mode1"] = df_filtered["rolling_azimuth_heading"].apply(
-        lambda x: circ_dist(x, input_mode) < azimuth_window
+        lambda x: min_angular_displacement(x, input_mode) < azimuth_window
     )
     df_filtered["near_mode2"] = df_filtered["rolling_azimuth_heading"].apply(
-        lambda x: circ_dist(x, input_reciprocal_mode) < azimuth_window
+        lambda x: min_angular_displacement(x, input_reciprocal_mode) < azimuth_window
     )
     assert (
         df_filtered["near_mode1"].any() or df_filtered["near_mode2"].any()
@@ -131,5 +168,6 @@ def test_flatten_linear_plane():
     input_plane_angle = testconfig["transect_azimuth"]
     reciprocal_plane_angle = (input_plane_angle + 180) % 360
     assert (
-        circ_dist(plane_angle, input_plane_angle) < 3 or circ_dist(plane_angle, reciprocal_plane_angle) < 3
+        min_angular_displacement(plane_angle, input_plane_angle) < 3
+        or min_angular_displacement(plane_angle, reciprocal_plane_angle) < 3
     ), "Plane angle not calculated correctly"
