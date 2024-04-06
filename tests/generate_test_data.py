@@ -179,15 +179,27 @@ class SimulatedData2D:
             return points
 
         points = geopoints(self)
-        self.df["latitude"] = [point.latitude for point in points] * self.number_of_transects
-        self.df["longitude"] = [point.longitude for point in points] * self.number_of_transects
         x_increment = (self.sampling_horizontal_range[1] - self.sampling_horizontal_range[0]) / self.points_per_transect
-
         x_series = np.linspace(
             self.sampling_horizontal_range[0],
             self.sampling_horizontal_range[0] + x_increment * self.points_per_transect,
             self.points_per_transect,
         )
+        latitudes = []
+        longitudes = []
+        xes = []
+        for i in range(0, self.number_of_transects):
+            if i % 2 == 0:
+                latitudes.extend([point.latitude for point in points])
+                longitudes.extend([point.longitude for point in points])
+                xes.extend(x_series)
+            else:  # invert to allow for proper azimuth switches
+                latitudes.extend([point.latitude for point in points[::-1]])
+                longitudes.extend([point.longitude for point in points[::-1]])
+                xes.extend(x_series[::-1])
+        self.df["latitude"] = latitudes
+        self.df["longitude"] = longitudes
+        self.df["x"] = xes
         altitude_step = (
             self.sampling_altitude_ato_range[1] - self.sampling_altitude_ato_range[0]
         ) / self.number_of_transects
@@ -195,7 +207,6 @@ class SimulatedData2D:
         for i in range(self.number_of_transects):
             start_index = i * self.points_per_transect
             end_index = start_index + self.points_per_transect
-            self.df.loc[start_index : end_index - 1, "x"] = x_series
             self.df.loc[start_index : end_index - 1, "altitude_ato"] = (
                 self.sampling_altitude_ato_range[0] + i * altitude_step
             )
@@ -238,7 +249,7 @@ class SimulatedData2D:
             retained_columns.append(gas)
         self.df_min = self.df_min[retained_columns]
 
-    def plot_data(self, logwind: bool, windspeed: bool, winddir: bool, gas: bool) -> None:
+    def plot_data(self, logwind: bool, windspeed: bool, winddir: bool, gas: bool, scatter_3d: bool) -> None:
         # Plot the log wind profile
         if logwind:
             fig, ax1 = plt.subplots(figsize=(6, 6))
@@ -302,13 +313,16 @@ class SimulatedData2D:
             cbar = fig.colorbar(im, ax=ax4)
             cbar.set_label("Wind Direction (Degrees)")
             plt.show()
+        if scatter_3d:
+            fig = gasflux.plotting.scatter_3d(self.df, color="ch4")
+            fig.show()
 
 
 def main():
     data = SimulatedData2D()
     data.generate_data()
     data.generate_sampling_flight()
-    data.plot_data(logwind=True, windspeed=True, winddir=True, gas=True)
+    data.plot_data(logwind=False, windspeed=False, winddir=False, gas=False, scatter_3d=True)
     data.df_min.to_csv(Path(__file__).parent.parent / "tests" / "data" / "exampledata.csv", index=False)
     data.df.to_csv(Path(__file__).parent.parent / "tests" / "data" / "testdata.csv", index=False)
 

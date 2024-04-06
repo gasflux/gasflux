@@ -78,3 +78,9 @@ required_cols:
   winddir: [0, 360]
   temperature: [-50, 60]
   pressure: [900, 1100]
+
+filters:
+  heading_filter:
+    azimuth_filter: 10
+    azimuth_window: 5
+    elevation_filter: 5
