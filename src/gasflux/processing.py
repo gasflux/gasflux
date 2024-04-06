@@ -38,11 +38,30 @@ def circ_median(x: np.ndarray | pd.Series) -> float:
         return (rearranged_angles[n // 2 - 1] + rearranged_angles[n // 2]) % 360 / 2
 
 
-def circ_dist(x: float, y: float) -> float:
+def min_angular_displacement(x: float, y: float) -> float:
     """
-    Calculates the circular difference between two angles (in 360 degree space)
+    Calculates the minimum circular difference between two angles (in 360 degree space)
     """
     return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)
+
+
+def wind_offset_correction(df: pd.DataFrame, plane_angle: float) -> pd.DataFrame:
+    """
+    Corrects wind direction data for a given plane angle, assuming the plane is the primary orientation of the dataset.
+    This is useful for aligning wind data with the plane's orientation, facilitating analysis of wind effects.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe containing wind direction data.
+        wind_dir_col (str): Column name for wind direction data.
+        plane_angle (float): Angle of the plane in degrees.
+
+    Returns:
+        pd.DataFrame: The modified dataframe with corrected wind direction data.
+    """
+    df = df.copy()
+    df["winddir_rel"] = df.apply(lambda row: abs(90 - min_angular_displacement(row["winddir"], plane_angle)), axis=1)
+    df["windspeed_normal"] = df["windspeed"] * np.cos(np.radians(df["winddir_rel"]))
+    return df
 
 
 def bimodal_azimuth(
@@ -76,7 +95,7 @@ def bimodal_azimuth(
             hist[max_freq_idx[1]] = 0
             max_freq_idx = np.argsort(hist)[-2:]
         mode1, mode2 = bin_centers[max_freq_idx]
-    if circ_dist(mode1, mode2) < 160:
+    if min_angular_displacement(mode1, mode2) < 160:
         warnings.warn(
             f"Two modes are close together - this probably should never happen: {mode1:.2f} and {mode2:.2f}",
             UserWarning,
@@ -163,7 +182,7 @@ def add_transect_azimuth_switches(df: pd.DataFrame, threshold=150, shift=3) -> p
         shift
     )  # this gives better behaviour for very neat transects
     df["deg_displace"] = df.apply(
-        lambda row: circ_dist(row["azimuth_heading"], row["prev_azimuth_heading"])
+        lambda row: min_angular_displacement(row["azimuth_heading"], row["prev_azimuth_heading"])
         if not pd.isnull(row["prev_azimuth_heading"])
         else np.nan,
         axis=1,
@@ -382,7 +401,7 @@ def remove_non_transects(
             current_run = [run[0]]
             for point in run[1:]:
                 current_azimuth = df.iloc[point[0]]["smoothed_azimuth_heading"]
-                if circ_dist(current_azimuth, last_azimuth) > azimuth_inversion_threshold:
+                if min_angular_displacement(current_azimuth, last_azimuth) > azimuth_inversion_threshold:
                     split_runs.append(current_run)
                     current_run = [point]
                 else:
@@ -417,14 +436,14 @@ def remove_non_transects(
     )
 
     azimuth_mask = df_removed["smoothed_azimuth_heading"].apply(
-        lambda x: any([circ_dist(x, major) <= azimuth_tolerance for major in major_azi_headings])
+        lambda x: any([min_angular_displacement(x, major) <= azimuth_tolerance for major in major_azi_headings])
     )
 
     df_removed.loc[~azimuth_mask, "filtered_by_azimuth"] = True
 
     # Apply elevation filter
     elevation_mask = df_removed["smoothed_elevation_heading"].apply(
-        lambda x: any([circ_dist(x, major) <= elevation_tolerance for major in major_elev_headings])
+        lambda x: any([min_angular_displacement(x, major) <= elevation_tolerance for major in major_elev_headings])
     )
     df_removed.loc[~elevation_mask, "filtered_by_elevation"] = True
 

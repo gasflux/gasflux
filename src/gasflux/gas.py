@@ -39,7 +39,17 @@ def gas_density(local_pressure: float, local_temperature_celsius: float, gas: st
 
 
 def gas_flux_column(df: pd.DataFrame, gas: str, wind: str = "windspeed") -> pd.DataFrame:
-    """Add a gas flux column to the dataframe."""
+    """
+    Add columns to the DataFrame for the gas density, mass, and flux.
+
+    Parameters:
+    - df: The DataFrame.
+    - gas: The chemical formula of the gas.
+    - wind: The column name for the wind speed (NB - must be perpendicular to the plane)
+
+    Returns:
+    - The DataFrame with the added columns.
+    """
     average_temp = df["temperature"].mean()  # celsius
     average_pressure = df["pressure"].mean()  # hPa
     gd = gas_density(local_pressure=average_pressure, local_temperature_celsius=average_temp, gas=gas)  # kg/m3
