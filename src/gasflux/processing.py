@@ -83,19 +83,20 @@ def altitude_transect_splitter(df: pd.DataFrame) -> tuple[pd.DataFrame, Figure]:
     Returns:
         tuple: Modified dataframe with transect labels and a figure showing the histogram with peaks.
     """
+    df = df.copy()
     heights, bin_edges = np.histogram(df["altitude_ato"], bins=40)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     peaks, properties = find_peaks(heights)
     bin_centers[peaks]
 
-    slice_edges = (bin_centers[peaks][:-1] + bin_centers[peaks][1:]) / 2
-    slice_edges = np.append(df["altitude_ato"].min(), slice_edges)
-    slice_edges = np.append(slice_edges, df["altitude_ato"].max())
+    transect_edges = (bin_centers[peaks][:-1] + bin_centers[peaks][1:]) / 2
+    transect_edges = np.append(df["altitude_ato"].min(), transect_edges)
+    transect_edges = np.append(transect_edges, df["altitude_ato"].max())
     fig, ax = plt.subplots()
     ax.stairs(edges=bin_edges, values=heights, fill=True)
     ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
-    ax.vlines(slice_edges, ymin=0, ymax=max(heights), color="red")
-    df["slice"] = pd.cut(df["altitude_ato"], bins=list(slice_edges), labels=False, include_lowest=True)  # type: ignore
+    ax.vlines(transect_edges, ymin=0, ymax=max(heights), color="red")
+    df["transect_num"] = pd.cut(df["altitude_ato"], bins=list(transect_edges), labels=False, include_lowest=True)  # type: ignore
     return df, fig
 
 
