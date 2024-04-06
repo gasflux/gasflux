@@ -1,4 +1,4 @@
-"""A script to generate minimum required input data for the gasflux package."""
+"""A script to generate minimum required input data for testing and running the gasflux package."""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,10 +8,11 @@ from pathlib import Path
 import pandas as pd
 from geopy.distance import geodesic
 from geopy.point import Point
+import gasflux
 
 
 def load_config() -> dict:
-    file_path = Path(__file__).parent / "test_data_config.yaml"
+    file_path = Path(__file__).parent / "testconfig.yaml"
     with open(file_path) as file:
         return yaml.safe_load(file)
 
@@ -218,7 +219,11 @@ class SimulatedData2D:
                 self.df[gas] = self.concentration_maps[gas][self.df["index_y"], self.df["index_x"]]
 
         sample_data(self)
-        self.df_export = self.df.copy()
+
+        self.df = gasflux.pre_processing.add_utm(self.df)
+        self.df = gasflux.pre_processing.add_heading(self.df)
+
+        self.df_min = self.df.copy()
         retained_columns = [
             "timestamp",
             "latitude",
@@ -231,7 +236,7 @@ class SimulatedData2D:
         ]
         for gas in self.gases:
             retained_columns.append(gas)
-        self.df_export = self.df_export[retained_columns]
+        self.df_min = self.df_min[retained_columns]
 
     def plot_data(self, logwind: bool, windspeed: bool, winddir: bool, gas: bool) -> None:
         # Plot the log wind profile
@@ -304,7 +309,8 @@ def main():
     data.generate_data()
     data.generate_sampling_flight()
     data.plot_data(logwind=True, windspeed=True, winddir=True, gas=True)
-    data.df_export.to_csv(Path(__file__).parent.parent / "tests" / "data" / "testdata.csv", index=False)
+    data.df_min.to_csv(Path(__file__).parent.parent / "tests" / "data" / "exampledata.csv", index=False)
+    data.df.to_csv(Path(__file__).parent.parent / "tests" / "data" / "testdata.csv", index=False)
 
 
 if __name__ == "__main__":

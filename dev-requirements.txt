@@ -4,6 +4,7 @@ pigar
 pre-commit
 pytest
 pytest-mock
+python-semantic-release
 ruff
 safety
 vulture
