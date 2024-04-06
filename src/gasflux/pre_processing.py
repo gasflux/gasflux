@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from . import plotting
+from .processing import circ_median
 
 
 def data_tests(df: pd.DataFrame):
@@ -53,12 +54,17 @@ def add_utm(df: pd.DataFrame) -> gpd.GeoDataFrame:
 def add_heading(df, rolling_window=1):
     df["hor_distance"] = np.sqrt((df["utm_northing"].diff()) ** 2 + (df["utm_easting"].diff()) ** 2)
     df["vert_distance"] = df["altitude_ato"].diff()
-
-    df["elevation_heading"] = (
-        np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"])).rolling(rolling_window).mean()
-    )
+    df["vert_distance"] = pd.to_numeric(df["vert_distance"], errors="coerce")
+    df["hor_distance"] = pd.to_numeric(df["hor_distance"], errors="coerce")
     df["azimuth_heading"] = (
-        np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())).rolling(rolling_window).mean() % 360
+        (np.degrees(np.arctan2(df["utm_easting"].diff(), df["utm_northing"].diff())) % 360)
+        .rolling(rolling_window)
+        .apply(lambda x: circ_median(x), raw=True)
+    )
+    df["elevation_heading"] = (
+        np.degrees(np.arctan2(df["vert_distance"], df["hor_distance"]))
+        .rolling(rolling_window)
+        .apply(lambda x: circ_median(x), raw=True)
     )
     return df
 
