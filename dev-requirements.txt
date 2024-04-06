@@ -1,6 +1,7 @@
 ipykernel
 mypy
 pigar
+pip > 23.3 # because of Safety
 pre-commit
 pytest
 pytest-mock
