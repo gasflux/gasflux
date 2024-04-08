@@ -52,7 +52,7 @@ output_dir: ./test_reports
 
 baseline_algorithm: fastchrom
 
-variogram_settings:
+semivariogram_settings:
   model: spherical
   estimator: cressie
   n_lags: 20

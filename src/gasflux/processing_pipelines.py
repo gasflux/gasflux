@@ -192,6 +192,17 @@ class KrigingInterpolationStrategy(InterpolationStrategy):
             logger.info(f"Kriged {gas}")
 
 
+def strategy_selection(self):
+    if self.config["strategies"]["baseline"] == "algorithm":
+        self.baseline_strategy = AlgorithmicBaselineStrategy(self)
+    if self.config["sensor_strategy"] == "insitu":
+        self.sensor_strategy = InSituSensorStrategy(self)
+    if self.config["spatial_processing_strategy"] == "curtain":
+        self.spatial_processing_strategy = CurtainSpatialProcessingStrategy(self)
+    if self.config["interpolation_strategy"] == "kriging":
+        self.interpolation_strategy = KrigingInterpolationStrategy(self)
+
+
 class DataProcessor:
     def __init__(self, config, df):
         self.config = config
@@ -256,4 +267,7 @@ def process_main(data_file: Path, config_file: Path | None = None) -> None:
     for gas, report in processor.reports.items():
         with Path.open(output_path / f"{name}_{gas}_report.html", "w") as f:
             f.write(report)
-    logger.info(f"Reports written to {output_path}")
+    # write config
+    with Path.open(output_path / f"{name}_config.yaml", "w") as f:
+        yaml.dump(config, f)
+    logger.info(f"Reports and config written to {output_path}")

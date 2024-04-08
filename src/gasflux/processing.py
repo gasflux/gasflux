@@ -311,7 +311,7 @@ def largest_monotonic_transect_series(df: pd.DataFrame) -> tuple[pd.DataFrame, i
     starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
     # filter to the biggest monotonic series of values
     df = df[(df["transect_num"] >= starttransect) & (df["transect_num"] <= endtransect)]
-    print(
+    logging.info(
         f"Parsed a flight of {len(np.unique(df['transect_num']))} transects from {alt_dict[starttransect]:.0f}m"
         f" to {alt_dict[endtransect]:.0f}m between {df['timestamp'].iloc[0]} and {df['timestamp'].iloc[-1]}",
     )

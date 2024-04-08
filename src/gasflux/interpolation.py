@@ -17,16 +17,16 @@ def simpsonintegrate(array: np.ndarray, x_cell_size: float, y_cell_size: float) 
     return vol_grid * x_cell_size * y_cell_size  # type: ignore
 
 
-def directional_gas_variogram(
-    df: pd.DataFrame, x: str, z: str, gas: str, variogram_filter: float | None = None, **variogram_settings
+def directional_gas_semivariogram(
+    df: pd.DataFrame, x: str, z: str, gas: str, semivariogram_filter: float | None = None, **semivariogram_settings
 ):
-    """Function to calculate the directional variogram - typically horizontally - of a gas in a dataframe."""
-    if variogram_filter:
-        df = df[df[gas] > variogram_filter]
+    """Function to calculate the directional semivariogram - typically horizontally - of a gas in a dataframe."""
+    if semivariogram_filter:
+        df = df[df[gas] > semivariogram_filter]
     v = skg.Variogram(
         df[[x, z]].to_numpy(),
         df[gas].to_numpy(),
-        **variogram_settings,
+        **semivariogram_settings,
     )
     return v
 
@@ -37,15 +37,15 @@ def ordinary_kriging(
     y: str,
     gas: str,
     ordinary_kriging_settings: dict,
-    variogram_filter: float | None = None,
-    **variogram_settings,
+    semivariogram_filter: float | None = None,
+    **semivariogram_settings,
 ):
     """Function to calculate the ordinary kriging of a gas in a dataframe, after calculating a semivariogram."""
     gasflux = f"{gas}_kg_h_m2"
     skg.plotting.backend("plotly")  # type: ignore
-    variogram = directional_gas_variogram(df, x, y, gasflux, variogram_filter, **variogram_settings)
+    semivariogram = directional_gas_semivariogram(df, x, y, gasflux, semivariogram_filter, **semivariogram_settings)
     ok = skg.OrdinaryKriging(
-        variogram,
+        semivariogram,
         coordinates=df[[x, y]].to_numpy(),
         values=df[gasflux].to_numpy(),
         min_points=ordinary_kriging_settings["min_points"],
@@ -103,9 +103,9 @@ def ordinary_kriging(
         "error field (1 sigma)": error_1s,
         "volume_error": volume_error,
     }
-    variogram_plot = variogram.plot(show=False)
+    semivariogram_plot = semivariogram.plot(show=False)
 
-    return krig_variables, output_text, contour_plot, grid_plot, variogram_plot
+    return krig_variables, output_text, contour_plot, grid_plot, semivariogram_plot
 
 
 # def additive_row_integration(df: pd.DataFrame, rowlabel: str = "slice"):
