@@ -1,6 +1,11 @@
-# GHG-flux
-quantifying greenhouse gas flux
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Tests](https://github.com/gasflux/gasflux/workflows/Tests%20and%20Checks/badge.svg)](https://github.com/gasflux/gasflux/actions?query=workflow%3A%22Tests+and+Checks%22)
+[![linting - Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v0.json)](https://github.com/charliermarsh/ruff)
+[![format - Black](https://img.shields.io/badge/format-black-000000.svg)](https://github.com/psf/black)
+[![types - mypy](https://img.shields.io/badge/types-mypy-blue.svg)](https://github.com/python/mypy)
+
+# GasFlux
 
 ## Installation
 
