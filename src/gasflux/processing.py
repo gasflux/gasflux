@@ -60,7 +60,8 @@ def wind_offset_correction(df: pd.DataFrame, plane_angle: float) -> pd.DataFrame
     """
     df = df.copy()
     df["winddir_rel"] = df.apply(lambda row: abs(90 - min_angular_displacement(row["winddir"], plane_angle)), axis=1)
-    df["windspeed_normal"] = df["windspeed"] * np.cos(np.radians(df["winddir_rel"]))
+    df["windspeed_measured"] = df["windspeed"]
+    df["windspeed"] = df["windspeed"] * np.cos(np.radians(df["winddir_rel"]))
     return df
 
 
@@ -310,7 +311,7 @@ def largest_monotonic_transect_series(df: pd.DataFrame) -> tuple[pd.DataFrame, i
     # filter to the biggest monotonic series of values
     df = df[(df["transect_num"] >= starttransect) & (df["transect_num"] <= endtransect)]
     print(
-        f"Parsed a flight of {endtransect-starttransect} transects from {alt_dict[starttransect]:.0f}m to \
+        f"Parsed a flight of {df['transect_num'].is_unique} transects from {alt_dict[starttransect]:.0f}m to \
             {alt_dict[endtransect]:.0f}m between the time of {df.index[0]} and {df.index[-1]}",
     )
     return df, starttransect, endtransect
