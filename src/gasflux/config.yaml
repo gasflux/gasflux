@@ -2,14 +2,33 @@
 
 output_dir: ~/gasflux_reports
 
+# required columns and ranges
+required_cols:
+  latitude: [-90, 90]
+  longitude: [-180, 180]
+  altitude_ato: [-200, 500] # meters above takeoff
+  windspeed: [0, 50] # m/s
+  winddir: [0, 360] # degrees
+  temperature: [-50, 60] # degrees Celsius
+  pressure: [900, 1100] # hPa/mb
+
+# optional gas columns and ppm ranges. Relative concentrations are used so offset can be wrong as long as gain and linearity are correct.
 gases:
   ch4: [1.5, 500]
   co2: [300, 5000]
   c2h6: [-0.5, 10]
 
+strategies:
+  baseline: "algorithm" # currently only algorithm (via pybaselines) is supported
+  sensor: "insitu" # currently only insitu is supported
+  spatial: "curtain" # currently only curtain is supported
+  interpolation: "kriging" # currently only kriging is supported
+
+# baseline settings
 baseline_algorithm: fastchrom
 
-variogram_settings:
+# kriging settings
+semivariogram_settings:
   model: spherical
   estimator: cressie
   n_lags: 20
@@ -20,18 +39,8 @@ variogram_settings:
   tolerance: 10
   azimuth: 0
   bandwidth: 20
-
 ordinary_kriging_settings:
   min_points: 3
   max_points: 100
   grid_resolution: 500
   min_nodes: 10
-
-required_cols:
-  latitude: [-90, 90]
-  longitude: [-180, 180]
-  altitude_ato: [-100, 500]
-  windspeed: [0, 30]
-  winddir: [0, 360]
-  temperature: [-50, 60]
-  pressure: [900, 1100]
