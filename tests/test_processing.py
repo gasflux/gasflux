@@ -144,7 +144,9 @@ def test_mCount_max():
 
 
 def test_largest_monotonic_transect_series():
-    df = load_cols(["altitude_ato", "azimuth_heading", "longitude", "latitude", "utm_easting", "utm_northing"])
+    df = load_cols(
+        ["timestamp", "altitude_ato", "azimuth_heading", "longitude", "latitude", "utm_easting", "utm_northing"]
+    )
     df, starttransect, endtransect = gasflux.processing.largest_monotonic_transect_series(df)
     starttransect = 1
     endtransect = testconfig["number_of_transects"]
