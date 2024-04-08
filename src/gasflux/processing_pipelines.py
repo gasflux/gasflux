@@ -187,7 +187,7 @@ class KrigingInterpolationStrategy(InterpolationStrategy):
                 y="altitude_ato",
                 gas=gas,
                 ordinary_kriging_settings=self.data_processor.config["ordinary_kriging_settings"],
-                **self.data_processor.config["variogram_settings"],
+                **self.data_processor.config["semivariogram_settings"],
             )
             logger.info(f"Kriged {gas}")
 
