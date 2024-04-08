@@ -7,33 +7,65 @@
 
 # GasFlux
 
-## Installation
+GasFlux is a tool for processing atmospheric gas concentration data and windspeeds into mass emissions fluxes, with principle applications to greenhouse gas measurement and vulcanology. Currently it works with in situ ("sniffing") data from UAVs and other aircraft, using mass balance as a paradigm and kriging as an interpolation strategy, but the intention is to expand this to other kinds of sampling and processing strategies, such as open-path and tracer methods.
 
-To install, clone the repository using e.g. `git clone ` , cd to the main directory and use  `pip install -e .` to install it as an editable python package.
+It is released under the AGPLv3 license as a free and open-source project - comments, pull requests, issues and co-development are warmly welcomed. Currently development is led by Jamie McQuilkin ([@pipari](https://github.com/pipari)) at the UAV Greenhouse Gas group at the University of Manchester.
 
-Then run `pip install -r requirements.txt` to install dependencies.
+## User Installation
+
+The package is available on PyPi and can be installed using `pip install gasflux`.
 
 ## Usage
-Processing- for drone flights  ingests a csv file with the following minimum columns:
+
+The package interface is in active development. Currently it ingests a data csv file (or folder containing only data csv files) and a config file that dictates the parameters of the analysis.
+
+This is done through the syntax `gasflux process <input_file> --config <config_file>`.
+
+### The config file
+
+The default config.yaml is located in the package source. It can be generated in the current directory or optionally a supplied directory using `gasflux generate-config <path>`. In this case it should be supplied to the `process` command each time.
+
+Through it, variables can be passed to the [scikit-gstat](https://scikit-gstat.readthedocs.io/en/latest/) package used for kriging and the [pybaselines](https://pybaselines.readthedocs.io/en/latest/) package used for baseline correction.
+
+### The data file
+
+Input data files must be csv-type (i.e. readable by `pandas`) and have the following columns (all lower case):
+
 - `timestamp` (datetime)
 - `latitude` (float)
 - `longitude` (float)
 - `altitude_ato` (float) - altitude above takeoff
-- `windspeed` (float)
-- `winddir` (float)
-- `temperature` (float)
-- `pressure` (float)
-It then requires a gas concentraiton column in ppm for each gas being measured. The column name should be the gas name, e.g. `co2`, `ch4`, `n2o`, etc. and the gases to be processed are defined in config.yaml. e.g.
-- `ch4` (float) - in ppm
-- `co2` (float) - in ppm
-- `n2o` (float) - in ppm
+- `windspeed` (float) - in m/s, as measured or inferred at each measurement point
+- `winddir` (float) - in standard 0-360 degree format, relative to the earth
+- `temperature` (float) in degrees celsius
+- `pressure` (float) - in hPa/mBar
 
-Processing will then add columns for local easting and northing, and calculate a flux column for each gas using the wind speed and direction, and the gas concentration. This is calculated based on enhancements by normalising the gas flux to a baseline. The flux column is then interpolated to give an emissions flux.
+At least one gas concentration in ppm is also required. The column name should be the gas name, e.g. `co2`, `ch4`, `n2o`, etc.
 
-## Drone Logs
+The gas should be entered in the config.yaml file along with a range of concentrations in ppmv, e.g.:
 
-The best way to convert encoded DJI logs is to use "djiparsetext", a C++ library.
+```
+gases:
+  ch4: [1.5, 500]
+  co2: [300, 5000]
+  c2h6: [-0.5, 10]
+```
 
-Documentation can be found here: http://djilogs.live555.com/
+Ensuring input data are sufficient and correctly formatted is non-trivial and important, but is left to the user. Data sources vary enormously so it is difficult to generalise this part of the analysis - in many cases these will be a mix of flight logs, GPS, one or more anemometers, one or more gas sensors, a thermometer, hygrometer, barometer.
 
+Synchronisation and fusion of these data sources is important and should be given great attention - there are several ways to do this, including GPS logging on each sensor, recording everything on a single device, or NTP server synchronisation. Care should also be taken to avoid loss of data through resampling or interpolation.
+
+One way to convert encoded DJI logs is to use `djiparsetext`, a C++ library available on github [here](https://github.com/uav4geo/djiparsetxt) and documented [here](http://djilogs.live555.com/).
+
+## Development
+
+### Installation
+
+To install, clone the repository using e.g. `git clone` and use  `pip install -e .` to install it as an editable python package.
+
+It's highly recommended to use a virtual environment to manage dependencies. If you're not currently using one, [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/install.html) is a good option.
+
+Then run `pip install -r requirements.txt` and `pip install -r requirements-dev.txt` to install the required dependencies.
+
+User requirements.txt is generated using `pigar generate` rather than `pip freeze`.
 
