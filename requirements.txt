@@ -12,6 +12,7 @@ numpy==1.26.4
 pandas==2.2.1
 plotly==5.20.0
 pybaselines==1.1.0
+pytest==8.1.1
 PyYAML==6.0.1
 scikit-gstat==1.0.16
 scipy==1.12.0
