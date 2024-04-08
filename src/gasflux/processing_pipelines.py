@@ -1,5 +1,3 @@
-"""Processing pipelines for gasflux data."""
-
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -10,6 +8,8 @@ import plotly.graph_objects as go
 import yaml
 
 import gasflux
+
+from abc import ABC, abstractmethod
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,95 +76,155 @@ class DataValidator:  # TODO(me): decide whether to move this to preprocessing
                 logging.error(f"Column '{col}' contains values out of range: {min_val} to {max_val}.")
 
 
-class CurtainPipeline:
-    """Processing pipeline for the curtain data (2D on a cross-sectional plane)."""
+class BaselineStrategy(ABC):
+    def __init__(self, data_processor):
+        self.data_processor = data_processor
 
-    def __init__(self, df: pd.DataFrame, config: dict, name: str):
-        """Initialise the pipeline with the DataFrame, config, and name."""
-        self.processing_time = datetime.now()
-        self.dfs: dict = {}
-        self.figs: dict = {
-            "baseline": {},
-            "scatter_3d": {},
-            "windrose": go.Figure,
-            "wind_timeseries": go.Figure,
-            "contour": {},
-            "krig_grid": {},
-            "semivariogram": {},
-        }
-        self.text: dict = {"krig_output": {}}
-        self.std: dict = {}
-        self.reports: dict = {}
-        self.krig_parameters: dict = {}
-        self.config = config
-        self.df = df
-        self.gases = config["gases"]
-        self.name = name
+    @abstractmethod
+    def process(self):
+        pass
 
-    def run(self) -> None:
-        """Run the processing pipeline."""
-        validator = DataValidator(self.df, self.config)
-        validator.validate()
-        # Add columns
-        self.df = gasflux.pre_processing.add_utm(self.df)
-        self.df = gasflux.pre_processing.add_heading(self.df)
-        # Baseline correction
-        for gas in self.gases:
-            self.df, self.figs["baseline"][gas], self.text[f"baseline_{gas}"] = gasflux.baseline.baseline(
-                df=self.df, gas=gas, algorithm=self.config["baseline_algorithm"]
+
+class AlgorithmicBaselineStrategy(BaselineStrategy):
+    def process(self):
+        logger.info("Applying algorithmic baseline correction")
+        for gas in self.data_processor.gases:
+            (
+                self.data_processor.df,
+                self.data_processor.figs["baseline"][gas],
+                self.data_processor.text[f"baseline_{gas}"],
+            ) = gasflux.baseline.baseline(
+                df=self.data_processor.df, gas=gas, algorithm=self.data_processor.config["baseline_algorithm"]
             )
-            self.std[f"{gas}_baseline"] = np.std(self.df.loc[~self.df[f"{gas}_signal"], f"{gas}_normalised"])
-        self.df_std = self.df.copy()
-        # Filtering of flight
-        self.dfs["original"] = self.df.copy()
-        self.df, self.start_transect, self.end_transect = gasflux.processing.largest_monotonic_transect_series(self.df)
-        # TODO - add filtering
-        self.dfs["removed"] = self.dfs["original"].loc[self.dfs["original"].index.difference(self.df.index)]
-
-        # Orthogonal distance regression to flatten the plane
-        self.df, self.plane_angle = gasflux.processing.flatten_linear_plane(self.df)
-
-        # Deal with wind data direction offset
-        self.df = gasflux.processing.wind_offset_correction(self.df, self.plane_angle)
-
-        # Add flux column based on wind speed and direction
-        for gas in self.gases:
-            self.df = gasflux.gas.gas_flux_column(self.df, gas)
-
-        # Graphs
-        for gas in self.gases:
-            self.figs["scatter_3d"][gas] = gasflux.plotting.scatter_3d(
-                df=self.df, color=gas, colorbar_title=f"{gas.upper()} flux (kg/m²/h)"
+            self.data_processor.std[f"{gas}_baseline"] = np.std(
+                self.data_processor.df.loc[~self.data_processor.df[f"{gas}_signal"], f"{gas}_normalised"]
             )
-            self.figs["scatter_3d"][gas].add_trace(  # TODO - put this in plotting
+        self.data_processor.df_std = self.data_processor.df.copy()
+
+
+class SensorStrategy(ABC):
+    def __init__(self, data_processor):
+        self.data_processor = data_processor
+
+    @abstractmethod
+    def process(self):
+        pass
+
+
+class InSituSensorStrategy(SensorStrategy):
+    def process(self):
+        logger.info("Processing InSitu Sensor Data")
+        for gas in self.data_processor.gases:
+            self.data_processor.figs["scatter_3d"][gas] = gasflux.plotting.scatter_3d(
+                df=self.data_processor.df, color=gas, colorbar_title=f"{gas.upper()} flux (kg/m²/h)"
+            )
+        self.data_processor.figs["windrose"] = gasflux.plotting.windrose(self.data_processor.df, plot_transect=True)
+        self.data_processor.figs["wind_timeseries"] = gasflux.plotting.time_series(
+            self.data_processor.df, y="windspeed", y2="winddir"
+        )
+
+
+class SpatialProcessingStrategy(ABC):
+    def __init__(self, data_processor):
+        self.data_processor = data_processor
+
+    @abstractmethod
+    def process(self):
+        pass
+
+
+class CurtainSpatialProcessingStrategy(SpatialProcessingStrategy):
+    def process(self):
+        logger.info("Applying curtain spatial processing")
+        self.data_processor.dfs["original"] = self.data_processor.df.copy()
+        self.data_processor.df, self.data_processor.start_transect, self.data_processor.end_transect = (
+            gasflux.processing.largest_monotonic_transect_series(self.data_processor.df)
+        )
+        self.data_processor.dfs["removed"] = self.data_processor.dfs["original"].loc[
+            self.data_processor.dfs["original"].index.difference(self.data_processor.df.index)
+        ]
+        self.data_processor.df, self.data_processor.plane_angle = gasflux.processing.flatten_linear_plane(
+            self.data_processor.df
+        )
+        self.data_processor.df = gasflux.processing.wind_offset_correction(
+            self.data_processor.df, self.data_processor.plane_angle
+        )
+        for gas in self.data_processor.gases:
+            self.data_processor.df = gasflux.gas.gas_flux_column(self.data_processor.df, gas)
+            self.data_processor.figs["scatter_3d"][gas].add_trace(
                 go.Scatter3d(
-                    x=self.dfs["removed"]["utm_easting"],
-                    y=self.dfs["removed"]["utm_northing"],
-                    z=self.dfs["removed"]["altitude_ato"],
+                    x=self.data_processor.dfs["removed"]["utm_easting"],
+                    y=self.data_processor.dfs["removed"]["utm_northing"],
+                    z=self.data_processor.dfs["removed"]["altitude_ato"],
                     mode="markers",
                     marker={"size": 2, "color": "black", "symbol": "circle", "opacity": 0.5},
                 )
             )
-        self.figs["windrose"] = gasflux.plotting.windrose(self.df, plot_transect=True)
-        self.figs["wind_timeseries"] = gasflux.plotting.time_series(self.df, y="windspeed", y2="winddir")
 
-        # Interpolation
-        for gas in self.gases:
+
+class InterpolationStrategy(ABC):
+    def __init__(self, data_processor):
+        self.data_processor = data_processor
+
+    @abstractmethod
+    def process(self):
+        pass
+
+
+class KrigingInterpolationStrategy(InterpolationStrategy):
+    def process(self):
+        logger.info("Applying kriging interpolation")
+        for gas in self.data_processor.gases:
             (
-                self.krig_parameters[gas],
-                self.text["krig_output"][gas],
-                self.figs["contour"][gas],
-                self.figs["krig_grid"][gas],
-                self.figs["semivariogram"][gas],
+                self.data_processor.krig_parameters[gas],
+                self.data_processor.text[f"krig_output_{gas}"],
+                self.data_processor.figs["contour"][gas],
+                self.data_processor.figs["krig_grid"][gas],
+                self.data_processor.figs["semivariogram"][gas],
             ) = gasflux.interpolation.ordinary_kriging(
-                df=self.df,
+                df=self.data_processor.df,
                 x="x",
                 y="altitude_ato",
                 gas=gas,
-                ordinary_kriging_settings=self.config["ordinary_kriging_settings"],
-                **self.config["variogram_settings"],
+                ordinary_kriging_settings=self.data_processor.config["ordinary_kriging_settings"],
+                **self.data_processor.config["variogram_settings"],
             )
-            logger.info(f"Kriged {self.name} {gas}")
+            logger.info(f"Kriged {gas}")
+
+
+class DataProcessor:
+    def __init__(self, config, df):
+        self.config = config
+        self.df = df
+        self.gases = config["gases"]
+        self.processing_time = datetime.now()
+        self.figs: dict = {
+            "scatter_3d": {},
+            "windrose": None,
+            "wind_timeseries": None,
+            "baseline": {},
+            "contour": {},
+            "krig_grid": {},
+            "semivariogram": {},
+        }
+        self.text = {}
+        self.std = {}
+        self.dfs = {}
+        self.reports = {}
+        self.krig_parameters = {}
+        self.baseline_strategy = AlgorithmicBaselineStrategy(self)
+        self.sensor_strategy = InSituSensorStrategy(self)
+        self.spatial_processing_strategy = CurtainSpatialProcessingStrategy(self)
+        self.interpolation_strategy = KrigingInterpolationStrategy(self)
+
+    def process(self):
+        self.df = gasflux.pre_processing.add_utm(self.df)
+        self.df = gasflux.pre_processing.add_heading(self.df)
+        DataValidator(self.df, self.config).validate()
+        self.baseline_strategy.process()
+        self.sensor_strategy.process()
+        self.spatial_processing_strategy.process()
+        self.interpolation_strategy.process()
 
         # Reporting
         for gas in self.gases:
@@ -185,14 +245,15 @@ def main() -> None:
     data_file = Path(__file__).parent.parent.parent / "tests" / "data" / "testdata.csv"
     name = data_file.stem
     df = read_csv(data_file)
-    curtain = CurtainPipeline(df, config, name)
-    curtain.run()
+
+    processor = DataProcessor(config, df)
+    processor.process()
 
     # write report
     output_dir = Path(config["output_dir"]).expanduser()
-    output_path = output_dir / name / curtain.processing_time.strftime("%Y-%m-%d_%H-%M-%S-%f_processing_run")
+    output_path = output_dir / name / processor.processing_time.strftime("%Y-%m-%d_%H-%M-%S-%f_processing_run")
     output_path.mkdir(parents=True, exist_ok=True)
-    for gas, report in curtain.reports.items():
+    for gas, report in processor.reports.items():
         with Path.open(output_path / f"{name}_{gas}_report.html", "w") as f:
             f.write(report)
 
