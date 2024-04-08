@@ -9,7 +9,7 @@
 
 GasFlux is a tool for processing atmospheric gas concentration data and windspeeds into mass emissions fluxes, with principle applications to greenhouse gas measurement and vulcanology. Currently it works with in situ ("sniffing") data from UAVs and other aircraft, using mass balance as a paradigm and kriging as an interpolation strategy, but the intention is to expand this to other kinds of sampling and processing strategies, such as open-path and tracer methods.
 
-It is released under the AGPLv3 license as a free and open-source project - comments, pull requests, issues and co-development are warmly welcomed. Currently development is led by Jamie McQuilkin ([@pipari](https://github.com/pipari)) at the UAV Greenhouse Gas group at the University of Manchester.
+It is released under the AGPLv3 license as a free and open-source project - comments, pull requests, issues and co-development are warmly welcomed. Currently development is co-ordinated by Jamie McQuilkin ([@pipari](https://github.com/pipari)) at the UAV Greenhouse Gas group at the University of Manchester.
 
 ## User Installation
 
@@ -68,4 +68,3 @@ It's highly recommended to use a virtual environment to manage dependencies. If 
 Then run `pip install -r requirements.txt` and `pip install -r requirements-dev.txt` to install the required dependencies.
 
 User requirements.txt is generated using `pigar generate` rather than `pip freeze`.
-
