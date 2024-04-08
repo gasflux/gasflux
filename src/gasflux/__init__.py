@@ -2,6 +2,7 @@
 
 from . import (
     baseline,
+    cli,
     gas,
     interpolation,
     ml,
@@ -14,6 +15,7 @@ from . import (
 
 __all__ = [
     "baseline",
+    "cli",
     "gas",
     "interpolation",
     "ml",
