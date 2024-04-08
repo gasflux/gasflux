@@ -132,5 +132,9 @@ dmypy.json
 .pyre/
 
 # VSCode
-
 .vscode/
+
+# Node modules for this repo
+package.json
+package-lock.json
+node_modules/
