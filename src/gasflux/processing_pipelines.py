@@ -238,11 +238,11 @@ class DataProcessor:
             )
 
 
-def main() -> None:
+def process_main(data_file: Path, config_file: Path | None = None) -> None:
     """Main function to run the pipeline."""
-    config_path = Path(__file__).parent / "config.yaml"
-    config = load_config(config_path)
-    data_file = Path(__file__).parent.parent.parent / "tests" / "data" / "testdata.csv"
+    if config_file is None:
+        config_file = Path(__file__).parent / "config.yaml"
+    config = load_config(config_file)
     name = data_file.stem
     df = read_csv(data_file)
 
@@ -256,7 +256,4 @@ def main() -> None:
     for gas, report in processor.reports.items():
         with Path.open(output_path / f"{name}_{gas}_report.html", "w") as f:
             f.write(report)
-
-
-if __name__ == "__main__":
-    main()
+    logger.info(f"Reports written to {output_path}")

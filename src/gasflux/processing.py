@@ -12,6 +12,7 @@ from scipy.optimize import least_squares
 from scipy.signal import find_peaks
 from scipy.stats import circmean
 import warnings
+import logging
 
 
 def circ_median(x: np.ndarray | pd.Series) -> float:
@@ -227,7 +228,7 @@ def heading_filter(
     df_filtered = df_filtered[abs(df["elevation_heading"]) < elevation_filter]
 
     azi1, azi2 = bimodal_azimuth(df_filtered)
-    print(f"Drone appears to be flying mainly on the headings {azi1:.2f} degrees and {azi2:.2f} degrees")
+    logging.info(f"Drone appears to be flying mainly on the headings {azi1:.2f} degrees and {azi2:.2f} degrees")
 
     df_filtered["rolling_azimuth_heading"] = (
         df_filtered["azimuth_heading"].rolling(azimuth_window, center=True).apply(lambda x: circ_median(x), raw=True)
@@ -311,8 +312,8 @@ def largest_monotonic_transect_series(df: pd.DataFrame) -> tuple[pd.DataFrame, i
     # filter to the biggest monotonic series of values
     df = df[(df["transect_num"] >= starttransect) & (df["transect_num"] <= endtransect)]
     print(
-        f"Parsed a flight of {df['transect_num'].is_unique} transects from {alt_dict[starttransect]:.0f}m to \
-            {alt_dict[endtransect]:.0f}m between the time of {df.index[0]} and {df.index[-1]}",
+        f"Parsed a flight of {len(np.unique(df['transect_num']))} transects from {alt_dict[starttransect]:.0f}m"
+        f" to {alt_dict[endtransect]:.0f}m between {df['timestamp'].iloc[0]} and {df['timestamp'].iloc[-1]}",
     )
     return df, starttransect, endtransect
 
