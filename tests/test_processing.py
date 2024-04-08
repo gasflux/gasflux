@@ -53,12 +53,12 @@ def test_wind_offset_correction_parametrized(plane_angle, expected_winddir_rel, 
     df = pd.DataFrame(data)
     corrected_df = gasflux.processing.wind_offset_correction(df, plane_angle)
     assert "winddir_rel" in corrected_df.columns, f"Relative wind direction column not added for angle {plane_angle}"
-    assert "windspeed_normal" in corrected_df.columns, f"Normalised wind speed column not added for angle {plane_angle}"
+    assert "windspeed" in corrected_df.columns, f"Normalised wind speed column not added for angle {plane_angle}"
     assert np.allclose(
         corrected_df["winddir_rel"], expected_winddir_rel, rtol=1e-5, atol=1e-10
     ), f"Relative wind directions not calculated correctly for angle {plane_angle}"
     assert np.allclose(
-        corrected_df["windspeed_normal"], expected_windspeed_normal, rtol=1e-5, atol=1e-10
+        corrected_df["windspeed"], expected_windspeed_normal, rtol=1e-5, atol=1e-10
     ), f"Normalised wind speeds not calculated correctly for angle {plane_angle}"
 
 
