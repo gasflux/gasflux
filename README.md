@@ -7,6 +7,9 @@
 
 # GasFlux
 
+`pip install gasflux` \
+`gasflux ---help`
+
 GasFlux is a tool for processing atmospheric gas concentration data and windspeeds into mass emissions fluxes, with principle applications to greenhouse gas measurement and vulcanology. Currently it works with in situ ("sniffing") data from UAVs and other aircraft, using mass balance as a paradigm and kriging as an interpolation strategy, but the intention is to expand this to other kinds of sampling and processing strategies, such as open-path and tracer methods.
 
 It is released under the AGPLv3 license as a free and open-source project - comments, pull requests, issues and co-development are warmly welcomed. Currently development is co-ordinated by Jamie McQuilkin ([@pipari](https://github.com/pipari)) at the UAV Greenhouse Gas group at the University of Manchester.
@@ -23,7 +26,7 @@ This is done through the syntax `gasflux process <input_file> --config <config_f
 
 ### The config file
 
-The default gasflux_config.yaml is located in the package source. It can be generated in a supplied directory using `gasflux generate-config <path>`. In this case it should be supplied to the `process` command each time.
+The default gasflux_config.yaml is located in the package source. It can be generated in a supplied directory using `gasflux generate-config <path>`. If a directory is supplied to `gasflux process` and a config is not also explicitly supplied, the package will look for one config file in that directory or its subdirectories and attempt to process all csv files in that directory and subdirectories. If multiple or no config is found, it will raise an error. If supplying a single csv file for processing (rather than a directory), only the parent directory will be searched for config files (not its subdirectories).
 
 Through it, variables can be passed to the [scikit-gstat](https://scikit-gstat.readthedocs.io/en/latest/) package used for kriging and the [pybaselines](https://pybaselines.readthedocs.io/en/latest/) package used for baseline correction.
 
