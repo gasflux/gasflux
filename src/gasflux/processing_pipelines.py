@@ -249,10 +249,8 @@ class DataProcessor:
             )
 
 
-def process_main(data_file: Path, config_file: Path | None = None) -> None:
+def process_main(data_file: Path, config_file: Path) -> None:
     """Main function to run the pipeline."""
-    if config_file is None:
-        config_file = Path(__file__).parent / "config.yaml"
     config = load_config(config_file)
     name = data_file.stem
     df = read_csv(data_file)
