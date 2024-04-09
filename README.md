@@ -23,7 +23,7 @@ This is done through the syntax `gasflux process <input_file> --config <config_f
 
 ### The config file
 
-The default config.yaml is located in the package source. It can be generated in the current directory or optionally a supplied directory using `gasflux generate-config <path>`. In this case it should be supplied to the `process` command each time.
+The default gasflux_config.yaml is located in the package source. It can be generated in a supplied directory using `gasflux generate-config <path>`. In this case it should be supplied to the `process` command each time.
 
 Through it, variables can be passed to the [scikit-gstat](https://scikit-gstat.readthedocs.io/en/latest/) package used for kriging and the [pybaselines](https://pybaselines.readthedocs.io/en/latest/) package used for baseline correction.
 
@@ -42,7 +42,7 @@ Input data files must be csv-type (i.e. readable by `pandas`) and have the follo
 
 At least one gas concentration in ppm is also required. The column name should be the gas name, e.g. `co2`, `ch4`, `n2o`, etc.
 
-The gas should be entered in the config.yaml file along with a range of concentrations in ppmv, e.g.:
+The gas should be entered in the gasflux_config.yaml file along with a range of concentrations in ppmv, e.g.:
 
 ```
 gases:
