@@ -268,23 +268,5 @@ def process_main(data_file: Path, config_file: Path) -> None:
 
     processor = DataProcessor(config, df)
     processor.process()
-
-    # write report
-    output_dir = Path(config["output_dir"]).expanduser()
-    output_path = output_dir / name / processor.processing_time.strftime("%Y-%m-%d_%H-%M-%S-%f_processing_run")
-    output_path.mkdir(parents=True, exist_ok=True)
-    for gas, report in processor.reports.items():
-        with Path.open(output_path / f"{name}_{gas}_report.html", "w") as f:
-            f.write(report)
-
-    # write config
-    header = f"# gasflux output config for file {name} from processing run at {processor.processing_time}\n"
-    with Path.open(output_path / f"{name}_config.yaml", "w") as f:
-        f.write(header)
-        yaml.dump(config, f)
-
-    # write output variables
-    gasflux.reporting.save_data(
-        data=processor.output_vars, filename=Path(output_path / f"{name}_output.yaml"), striplong=True
-    )
-    logger.info(f"Processing run saved to {output_path}")
+    gasflux.reporting.generate_reports(name, processor, config)
+    logger.info("Processing complete")

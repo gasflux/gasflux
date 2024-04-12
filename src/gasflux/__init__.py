@@ -1,5 +1,9 @@
 """Init file for gasflux package."""
 
+from importlib.metadata import version
+
+__version__ = version("gasflux")
+
 from . import (
     background,
     cli,
