@@ -19,12 +19,12 @@ gases:
   c2h6: [-0.5, 10]
 
 strategies:
-  baseline: "algorithm" # currently only algorithm (via pybaselines) is supported
+  background: "algorithm" # currently only algorithm (via pybaselines) is supported
   sensor: "insitu" # currently only insitu is supported
   spatial: "curtain" # currently only curtain is supported
   interpolation: "kriging" # currently only kriging is supported
 
-# baseline settings
+# algorithmic baseline settings
 baseline_algorithm: fastchrom
 
 # kriging settings
