@@ -5,12 +5,18 @@ from pathlib import Path
 import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.io import to_html
+from datetime import datetime
+import gasflux
+import yaml
 
+import logging
 from . import plotting
 
 
 import json
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def mass_balance_report(
@@ -55,7 +61,50 @@ def mass_balance_report(
     )
 
 
-def check_and_replace_large_arrays(output_vars: dict, threshold_size: int):
+def generate_reports(name: str, processor, config: dict):
+    """
+    Generates reports, configuration files, and processed output variables for gasflux processing runs.
+
+    Parameters:
+        name (str): The name identifier for the current processing run.
+        processor (object): The processing object containing report data and output variables.
+        config (dict): Configuration dictionary used for processing.
+    """
+    output_dir = Path(config["output_dir"]).expanduser()
+    processing_time = datetime.now()
+    output_path = output_dir / name / processing_time.strftime("%Y-%m-%d_%H-%M-%S-%f_processing_run")
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Save reports
+    for gas, report in processor.reports.items():
+        report_path = output_path / f"{name}_{gas}_report.html"
+        with open(report_path, "w") as file:
+            file.write(report)
+
+    # Save config with version
+    version = gasflux.__version__
+    header = f"# Gasflux version: {version}\n# Output config for file {name} from processing run at {processing_time}\n"
+    config_path = output_path / f"{name}_config.yaml"
+    with open(config_path, "w") as file:
+        file.write(header)
+        yaml.safe_dump(config, file)
+
+    # Save output variables
+    output_vars = processor.output_vars
+    output_vars = delete_large_arrays(output_vars, threshold_size=50)
+    header = (
+        f"# Gasflux version: {version}\n# Output variables for file {name} from processing run at {processing_time}\n"
+    )
+    filename = output_path / f"{name}_output_vars.json"
+    with open(filename, "w") as file:
+        file.write(header)
+        json.dump(
+            output_vars, file, default=lambda item: item.tolist() if isinstance(item, np.ndarray) else item, indent=4
+        )
+    logger.info(f"Processing run saved to {output_path}")
+
+
+def delete_large_arrays(output_vars: dict, threshold_size: int) -> dict:
     """
     Iterate through the output_vars dictionary and replace large numpy arrays
     with their metadata (e.g., shape and data type).
@@ -67,23 +116,10 @@ def check_and_replace_large_arrays(output_vars: dict, threshold_size: int):
     del_keys = []
     for key, value in output_vars.items():
         if isinstance(value, dict):
-            output_vars[key] = check_and_replace_large_arrays(value, threshold_size)  # recursive
+            output_vars[key] = delete_large_arrays(value, threshold_size)  # recursive
         elif isinstance(value, np.ndarray):
             if value.size > threshold_size:
                 del_keys.append(key)
     for key in del_keys:
         del output_vars[key]
     return output_vars
-
-
-def save_data(data: dict, filename: str | Path, striplong: bool = True):
-    def convert(item):
-        if isinstance(item, np.ndarray):
-            return item.tolist()
-        raise TypeError("Unsupported data type")
-
-    if striplong:
-        data = check_and_replace_large_arrays(data, threshold_size=50)
-
-    with open(filename, "w") as f:
-        json.dump(data, f, default=convert, indent=4)
