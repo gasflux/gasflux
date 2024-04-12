@@ -10,7 +10,7 @@ from . import plotting
 
 def simpsonintegrate(array: np.ndarray, x_cell_size: float, y_cell_size: float) -> float:
     """Function to obtain the volume of the krig in kgh⁻¹, i.e. the cut-fill volume
-    (negative volumes from baseline noise are subtracted)."""
+    (negative volumes from background noise are subtracted)."""
     # this integrates along each row of the grid
     vol_rows = integrate.simpson(np.transpose(array))
     vol_grid = integrate.simpson(vol_rows)  # this integrates the rows together

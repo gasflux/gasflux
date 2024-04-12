@@ -83,7 +83,7 @@ class DataValidator:  # TODO(me): decide whether to move this to preprocessing
                 logging.error(f"Column '{col}' contains values out of range: {min_val} to {max_val}.")
 
 
-class BaselineStrategy(ABC):
+class BackgroundStrategy(ABC):
     def __init__(self, data_processor):
         self.data_processor = data_processor
 
@@ -92,15 +92,15 @@ class BaselineStrategy(ABC):
         pass
 
 
-class AlgorithmicBaselineStrategy(BaselineStrategy):
+class AlgorithmicBaselineStrategy(BackgroundStrategy):
     def process(self):
-        logger.info("Applying algorithmic baseline correction")
+        logger.info("Applying algorithmic background correction")
         for gas in self.data_processor.gases:
             (
                 self.data_processor.df,
-                self.data_processor.figs["baseline"][gas],
-                self.data_processor.text[f"baseline_{gas}"],
-            ) = gasflux.baseline.baseline(
+                self.data_processor.figs["background"][gas],
+                self.data_processor.text[f"background_{gas}"],
+            ) = gasflux.background.baseline(
                 df=self.data_processor.df, gas=gas, algorithm=self.data_processor.config["baseline_algorithm"]
             )
         self.data_processor.df_std = self.data_processor.df.copy()
@@ -197,8 +197,8 @@ class KrigingInterpolationStrategy(InterpolationStrategy):
 
 
 def strategy_selection(self):
-    if self.config["strategies"]["baseline"] == "algorithm":
-        self.baseline_strategy = AlgorithmicBaselineStrategy(self)
+    if self.config["strategies"]["background"] == "algorithm":
+        self.background_strategy = AlgorithmicBaselineStrategy(self)
     if self.config["sensor_strategy"] == "insitu":
         self.sensor_strategy = InSituSensorStrategy(self)
     if self.config["spatial_processing_strategy"] == "curtain":
@@ -217,7 +217,7 @@ class DataProcessor:
             "scatter_3d": {},
             "windrose": None,
             "wind_timeseries": None,
-            "baseline": {},
+            "background": {},
             "contour": {},
             "krig_grid": {},
             "semivariogram": {},
@@ -226,7 +226,7 @@ class DataProcessor:
         self.output_vars: dict = {"krig_parameters": {}, "std": {}}
         self.dfs: dict = {}
         self.reports: dict = {}
-        self.baseline_strategy = AlgorithmicBaselineStrategy(self)
+        self.background_strategy = AlgorithmicBaselineStrategy(self)
         self.sensor_strategy = InSituSensorStrategy(self)
         self.spatial_processing_strategy = CurtainSpatialProcessingStrategy(self)
         self.interpolation_strategy = KrigingInterpolationStrategy(self)
@@ -235,7 +235,7 @@ class DataProcessor:
         self.df = gasflux.pre_processing.add_utm(self.df)
         self.df = gasflux.pre_processing.add_heading(self.df)
         DataValidator(self.df, self.config).validate()
-        self.baseline_strategy.process()
+        self.background_strategy.process()
         self.sensor_strategy.process()
         self.spatial_processing_strategy.process()
         self.interpolation_strategy.process()
@@ -245,7 +245,7 @@ class DataProcessor:
             self.reports[gas] = gasflux.reporting.mass_balance_report(
                 krig_params=self.output_vars["krig_parameters"][gas],
                 wind_fig=self.figs["wind_timeseries"],
-                baseline_fig=self.figs["baseline"][gas],
+                background_fig=self.figs["background"][gas],
                 threed_fig=self.figs["scatter_3d"][gas],
                 krig_fig=self.figs["contour"][gas],
                 windrose_fig=self.figs["windrose"],
@@ -255,7 +255,7 @@ class DataProcessor:
         self.output_vars["std"]["windspeed"] = self.df["windspeed"].std()
         self.output_vars["std"]["windddir"] = stats.circstd(self.df["winddir"], high=360)
         for gas in self.gases:
-            self.output_vars["std"][f"{gas}_baseline"] = self.df.loc[
+            self.output_vars["std"][f"{gas}_background"] = self.df.loc[
                 ~self.df[f"{gas}_signal"], f"{gas}_normalised"
             ].std()
 
