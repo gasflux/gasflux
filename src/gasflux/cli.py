@@ -199,3 +199,7 @@ The GasFlux Processing Pipeline is a command-line tool for processing CSV data f
     $ gasflux generate-config {Fore.MAGENTA}"/path/to/directory"{Style.RESET_ALL}
 """  # noqa
     print(help_text)
+
+
+if __name__ == "__main__":
+    main_cli()
