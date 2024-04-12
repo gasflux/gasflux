@@ -59,7 +59,7 @@ semivariogram_settings:
   bin_func: even
   fit_method: lm
   maxlag: 100
-  fit_sigma: linear
+  #fit_sigma: linear
   tolerance: 10
   azimuth: 0
   bandwidth: 20

@@ -265,7 +265,10 @@ def process_main(data_file: Path, config_file: Path) -> None:
     for gas, report in processor.reports.items():
         with Path.open(output_path / f"{name}_{gas}_report.html", "w") as f:
             f.write(report)
+
     # write config
+    header = f"# gasflux output config for file {name} from processing run at {processor.processing_time}\n"
     with Path.open(output_path / f"{name}_config.yaml", "w") as f:
+        f.write(header)
         yaml.dump(config, f)
     logger.info(f"Reports and config written to {output_path}")
