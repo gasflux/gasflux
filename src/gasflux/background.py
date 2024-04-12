@@ -15,7 +15,7 @@ def baseline(
 ):
     df = df.copy()
     if len(df) < 20:
-        raise ValueError("Dataframe must contain at least 20 rows for baseline correction.")
+        raise ValueError("Dataframe must contain at least 20 rows for background correction.")
     index = np.arange(len(df))
     baseline_fitter = pybs.Baseline(index, check_finite=False)
     fit = getattr(baseline_fitter, algorithm)
@@ -24,7 +24,7 @@ def baseline(
     background = (df[gas] - bkg)[bkg_points]
     signal = (df[gas] - bkg)[~bkg_points]
     df[f"{gas}_signal"] = np.invert(bkg_points)
-    fig = plotting.baseline_plotting(df, gas, bkg, signal)
+    fig = plotting.background_plotting(df, gas, bkg, signal)
     output_text = (
         f"Baseline algorithm: {algorithm}\n"
         f"Positive and negative 95% percentile of baseline: {np.percentile(background, 2.5):.2f} ppm, \

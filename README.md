@@ -28,7 +28,7 @@ This is done through the syntax `gasflux process <input_file> --config <config_f
 
 The default gasflux_config.yaml is located in the package source. It can be generated in a supplied directory using `gasflux generate-config <path>`. If a directory is supplied to `gasflux process` and a config is not also explicitly supplied, the package will look for one config file in that directory or its subdirectories and attempt to process all csv files in that directory and subdirectories. If multiple or no config is found, it will raise an error. If supplying a single csv file for processing (rather than a directory), only the parent directory will be searched for config files (not its subdirectories).
 
-Through it, variables can be passed to the [scikit-gstat](https://scikit-gstat.readthedocs.io/en/latest/) package used for kriging and the [pybaselines](https://pybaselines.readthedocs.io/en/latest/) package used for baseline correction.
+Through it, variables can be passed to the [scikit-gstat](https://scikit-gstat.readthedocs.io/en/latest/) package used for kriging and the [pybaselines](https://pybaselines.readthedocs.io/en/latest/) package used for background correction.
 
 ### The data file
 

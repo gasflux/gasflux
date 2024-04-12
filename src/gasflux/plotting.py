@@ -152,7 +152,7 @@ def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
     return fig
 
 
-def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series):
+def background_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     ymin = df[y].min()
     ymax = df[y].max()
@@ -163,7 +163,7 @@ def baseline_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Seri
     fig.update_yaxes(range=ylim, secondary_y=False, title_text="Sensor CH4 (ppm)")
     fig.update_yaxes(range=y2lim, secondary_y=True, title_text="Normalised CH4 (ppm)")
     fig.add_scatter(x=df.index, y=df[y], opacity=0.3, name="Raw Data")
-    fig.add_scatter(x=df.index, y=bkg, mode="lines", name="Fitted Baseline", line=dict(dash="dash"))
+    fig.add_scatter(x=df.index, y=bkg, mode="lines", name="Background", line=dict(dash="dash"))
     fig.add_scatter(x=df.index, y=df["normalised"], yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5)
     fig.add_scatter(x=signal.index, y=signal.values, yaxis="y2", name="Signal Points", mode="markers", opacity=0.5)
 

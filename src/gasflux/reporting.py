@@ -16,7 +16,7 @@ import numpy as np
 def mass_balance_report(
     krig_params: dict,
     wind_fig: go.Figure,
-    baseline_fig: go.Figure,
+    background_fig: go.Figure,
     threed_fig: go.Figure,
     krig_fig: go.Figure,
     windrose_fig: go.Figure,
@@ -27,8 +27,8 @@ def mass_balance_report(
     # Convert the figures to HTML
     plot_htmls = {}
     for name, fig in zip(
-        ["3D", "krig", "windrose", "wind", "baseline"],
-        [threed_fig, krig_fig, windrose_fig, wind_fig, baseline_fig],
+        ["3D", "krig", "windrose", "wind", "background"],
+        [threed_fig, krig_fig, windrose_fig, wind_fig, background_fig],
         strict=False,
     ):
         if fig:
@@ -51,7 +51,7 @@ def mass_balance_report(
         krig=plot_htmls["krig"],
         windrose=plot_htmls["windrose"],
         wind=plot_htmls["wind"],
-        baseline=plot_htmls["baseline"],
+        background=plot_htmls["background"],
     )
 
 

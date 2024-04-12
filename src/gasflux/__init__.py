@@ -1,7 +1,7 @@
 """Init file for gasflux package."""
 
 from . import (
-    baseline,
+    background,
     cli,
     gas,
     interpolation,
@@ -14,7 +14,7 @@ from . import (
 )
 
 __all__ = [
-    "baseline",
+    "background",
     "cli",
     "gas",
     "interpolation",
