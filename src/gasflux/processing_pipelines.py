@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from scipy import stats
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import yaml
@@ -48,10 +48,17 @@ class DataValidator:  # TODO(me): decide whether to move this to preprocessing
 
     def validate(self) -> None:
         """Validate the data."""
+        self._check_is_df()
         self._check_cols()
         self._check_dtypes()
         self._check_ranges()
         logger.info("Data validation passed")
+
+    def _check_is_df(self) -> None:
+        """Check that the input is a DataFrame."""
+        if not isinstance(self.df, pd.DataFrame):
+            logging.error("Input data is not a DataFrame.")
+            raise ValueError("Input data is not a DataFrame.")
 
     def _check_cols(self) -> None:
         """Check that the required columns are present."""
@@ -96,9 +103,6 @@ class AlgorithmicBaselineStrategy(BaselineStrategy):
             ) = gasflux.baseline.baseline(
                 df=self.data_processor.df, gas=gas, algorithm=self.data_processor.config["baseline_algorithm"]
             )
-            self.data_processor.std[f"{gas}_baseline"] = np.std(
-                self.data_processor.df.loc[~self.data_processor.df[f"{gas}_signal"], f"{gas}_normalised"]
-            )
         self.data_processor.df_std = self.data_processor.df.copy()
 
 
@@ -113,7 +117,7 @@ class SensorStrategy(ABC):
 
 class InSituSensorStrategy(SensorStrategy):
     def process(self):
-        logger.info("Processing InSitu Sensor Data")
+        logger.info("Processing in-situ (point) data")
         for gas in self.data_processor.gases:
             self.data_processor.figs["scatter_3d"][gas] = gasflux.plotting.scatter_3d(
                 df=self.data_processor.df, color=gas, colorbar_title=f"{gas.upper()} flux (kg/m²/h)"
@@ -176,7 +180,7 @@ class KrigingInterpolationStrategy(InterpolationStrategy):
         logger.info("Applying kriging interpolation")
         for gas in self.data_processor.gases:
             (
-                self.data_processor.krig_parameters[gas],
+                self.data_processor.output_vars["krig_parameters"][gas],
                 self.data_processor.text[f"krig_output_{gas}"],
                 self.data_processor.figs["contour"][gas],
                 self.data_processor.figs["krig_grid"][gas],
@@ -204,10 +208,10 @@ def strategy_selection(self):
 
 
 class DataProcessor:
-    def __init__(self, config, df):
-        self.config = config
-        self.df = df
-        self.gases = config["gases"]
+    def __init__(self, config: dict, df: pd.DataFrame):
+        self.config: dict = config
+        self.df: pd.DataFrame = df
+        self.gases: list[str] = config["gases"]
         self.processing_time = datetime.now()
         self.figs: dict = {
             "scatter_3d": {},
@@ -218,11 +222,10 @@ class DataProcessor:
             "krig_grid": {},
             "semivariogram": {},
         }
-        self.text = {}
-        self.std = {}
-        self.dfs = {}
-        self.reports = {}
-        self.krig_parameters = {}
+        self.text: dict = {}
+        self.output_vars: dict = {"krig_parameters": {}, "std": {}}
+        self.dfs: dict = {}
+        self.reports: dict = {}
         self.baseline_strategy = AlgorithmicBaselineStrategy(self)
         self.sensor_strategy = InSituSensorStrategy(self)
         self.spatial_processing_strategy = CurtainSpatialProcessingStrategy(self)
@@ -240,13 +243,21 @@ class DataProcessor:
         # Reporting
         for gas in self.gases:
             self.reports[gas] = gasflux.reporting.mass_balance_report(
-                krig_params=self.krig_parameters[gas],
+                krig_params=self.output_vars["krig_parameters"][gas],
                 wind_fig=self.figs["wind_timeseries"],
                 baseline_fig=self.figs["baseline"][gas],
                 threed_fig=self.figs["scatter_3d"][gas],
                 krig_fig=self.figs["contour"][gas],
                 windrose_fig=self.figs["windrose"],
             )
+
+        # Collecting descriptive variables
+        self.output_vars["std"]["windspeed"] = self.df["windspeed"].std()
+        self.output_vars["std"]["windddir"] = stats.circstd(self.df["winddir"], high=360)
+        for gas in self.gases:
+            self.output_vars["std"][f"{gas}_baseline"] = self.df.loc[
+                ~self.df[f"{gas}_signal"], f"{gas}_normalised"
+            ].std()
 
 
 def process_main(data_file: Path, config_file: Path) -> None:
@@ -271,4 +282,7 @@ def process_main(data_file: Path, config_file: Path) -> None:
     with Path.open(output_path / f"{name}_config.yaml", "w") as f:
         f.write(header)
         yaml.dump(config, f)
-    logger.info(f"Reports and config written to {output_path}")
+
+    # write output variables
+    gasflux.reporting.save_data(processor.output_vars, Path(output_path / f"{name}_output.yaml"))
+    logger.info(f"Processing run saved to {output_path}")

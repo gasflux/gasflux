@@ -48,7 +48,7 @@ gases:
 temperature: 10.0
 pressure: 1000.0
 
-output_dir: ./test_reports
+output_dir: ~/gasflux_reports
 
 baseline_algorithm: fastchrom
 

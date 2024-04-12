@@ -9,6 +9,10 @@ from plotly.io import to_html
 from . import plotting
 
 
+import json
+import numpy as np
+
+
 def mass_balance_report(
     krig_params: dict,
     wind_fig: go.Figure,
@@ -49,3 +53,14 @@ def mass_balance_report(
         wind=plot_htmls["wind"],
         baseline=plot_htmls["baseline"],
     )
+
+
+def save_data(data, filename):
+    # Convert NumPy arrays to lists for JSON serialization
+    def convert(item):
+        if isinstance(item, np.ndarray):
+            return item.tolist()
+        raise TypeError("Unsupported data type")
+
+    with open(filename, "w") as f:
+        json.dump(data, f, default=convert, indent=4)
