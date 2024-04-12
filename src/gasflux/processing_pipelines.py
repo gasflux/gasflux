@@ -284,5 +284,7 @@ def process_main(data_file: Path, config_file: Path) -> None:
         yaml.dump(config, f)
 
     # write output variables
-    gasflux.reporting.save_data(processor.output_vars, Path(output_path / f"{name}_output.yaml"))
+    gasflux.reporting.save_data(
+        data=processor.output_vars, filename=Path(output_path / f"{name}_output.yaml"), striplong=True
+    )
     logger.info(f"Processing run saved to {output_path}")

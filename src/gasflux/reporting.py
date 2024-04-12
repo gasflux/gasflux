@@ -55,12 +55,35 @@ def mass_balance_report(
     )
 
 
-def save_data(data, filename):
-    # Convert NumPy arrays to lists for JSON serialization
+def check_and_replace_large_arrays(output_vars: dict, threshold_size: int):
+    """
+    Iterate through the output_vars dictionary and replace large numpy arrays
+    with their metadata (e.g., shape and data type).
+
+    Parameters:
+        output_vars (dict): The dictionary containing output data including potential numpy arrays.
+        threshold_size (int): The number of elements above which an array is considered large.
+    """
+    del_keys = []
+    for key, value in output_vars.items():
+        if isinstance(value, dict):
+            output_vars[key] = check_and_replace_large_arrays(value, threshold_size)  # recursive
+        elif isinstance(value, np.ndarray):
+            if value.size > threshold_size:
+                del_keys.append(key)
+    for key in del_keys:
+        del output_vars[key]
+    return output_vars
+
+
+def save_data(data: dict, filename: str | Path, striplong: bool = True):
     def convert(item):
         if isinstance(item, np.ndarray):
             return item.tolist()
         raise TypeError("Unsupported data type")
+
+    if striplong:
+        data = check_and_replace_large_arrays(data, threshold_size=50)
 
     with open(filename, "w") as f:
         json.dump(data, f, default=convert, indent=4)
