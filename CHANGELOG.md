@@ -2,6 +2,13 @@
 
 
 
+## v0.1.3 (2024-04-14)
+
+### Fix
+
+* fix: automate build and PyPI deployment ([`1c59584`](https://github.com/gasflux/gasflux/commit/1c59584f6ce27f041dc53e007e32cf84a0ddd236))
+
+
 ## v0.1.2 (2024-04-14)
 
 ### Fix
