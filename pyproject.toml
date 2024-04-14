@@ -1,6 +1,6 @@
 [project]
 name = "gasflux"
-version = "0.1.1"
+version = "0.1.2"
 description = "A package to calculate gas emissions fluxes from natural and anthropogenic sources"
 authors = [{ name = "Jamie McQuilkin", email = "jamie.mcquilkin@gmail.com" }]
 license = { text = "AGPL-3.0" }
@@ -17,7 +17,7 @@ gasflux = "gasflux.cli:main_cli"
 "Bug Tracker" = "https://github.com/gasflux/gasflux/issues"
 
 [build-system]
-requires = ["setuptools>=69.0", "wheel"]
+requires = ["setuptools>=69.0", "wheel", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
