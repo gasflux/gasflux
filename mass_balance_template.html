@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 10px;
+    height: 800px;
+}
+
+.grid-item.double {
+    grid-column: span 2;
+}
+
+.grid-item {
+    width: 100%;
+    min-width: 300px;
+}
+
+.grid-item .plot-container {
+    width: 100%;
+    height: 100%;
+}
+</style>
+</head>
+<body>
+<h1>{{title}}</h1>
+<table>
+<tbody>
+{% for key, value in summary_data.items() %}
+<tr>
+    <td>{{key}}</td>
+    <td>{{value}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<div class="grid-container">
+<div class="grid-item">
+    <div class="plot-container">
+        {{ threeD|safe }}
+    </div>
+</div>
+<div class="grid-item double">
+    <div class="plot-container">
+        {{ krig|safe }}
+    </div>
+</div>
+<div class="grid-item">
+    <div class="plot-container">
+        {{ windrose|safe }}
+    </div>
+</div>
+<div class="grid-item double">
+    <div class="plot-container">
+        {{ wind|safe }}
+    </div>
+</div>
+<div class="grid-item double">
+    <div class="plot-container">
+        {{ background|safe }}
+    </div>
+</div>
+</div>
+</body>
+</html>
