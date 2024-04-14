@@ -1,3 +1,4 @@
+build
 ipykernel
 mypy
 pigar
@@ -8,5 +9,6 @@ pytest-mock
 python-semantic-release
 ruff
 safety
+setuptools
 twine
 vulture

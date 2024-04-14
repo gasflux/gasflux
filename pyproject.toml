@@ -5,7 +5,7 @@ description = "A package to calculate gas emissions fluxes from natural and anth
 authors = [{ name = "Jamie McQuilkin", email = "jamie.mcquilkin@gmail.com" }]
 license = { text = "AGPL-3.0" }
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 dynamic = ["dependencies", "optional-dependencies"]
 
@@ -61,6 +61,7 @@ logging_use_named_masks = false
 major_on_zero = true
 allow_zero_version = true
 tag_format = "v{version}"
+version_variables = ["src/gasflux/__init__.py:__version__"]
 version_toml = ["pyproject.toml:project.version"]
 
 [tool.semantic_release.branches.main]
