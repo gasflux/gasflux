@@ -39,11 +39,11 @@ def circ_median(x: np.ndarray | pd.Series) -> float:
         return (rearranged_angles[n // 2 - 1] + rearranged_angles[n // 2]) % 360 / 2
 
 
-def min_angular_displacement(x: float, y: float) -> float:
+def min_angular_displacement(x: float | np.ndarray, y: float | np.ndarray) -> float | np.ndarray:
     """
     Calculates the minimum circular difference between two angles (in 360 degree space)
     """
-    return min(abs(x - y) % 360, (360 - abs(x - y)) % 360)
+    return np.minimum(np.abs(x - y) % 360, (360 - np.abs(x - y)) % 360)
 
 
 def wind_offset_correction(df: pd.DataFrame, plane_angle: float) -> pd.DataFrame:
@@ -610,27 +610,38 @@ def recentre_azimuth(df: pd.DataFrame, r: float, x: str = "circ_azimuth", y: str
     return df
 
 
-def wind_rel_ground(
-    df: pd.DataFrame, aircraft_u: np.ndarray, aircraft_v: np.ndarray, wind_u: np.ndarray, wind_v: np.ndarray
+def drone_anemo_to_point_wind(
+    df: pd.DataFrame, yaw_col: str, anemo_u_col: str, anemo_v_col: str, easting_col: str, northing_col: str
 ) -> pd.DataFrame:
     """
-    Calculates wind speed and direction relative to the ground from aircraft and airspeed vectors.
-    u = N, v = E
+    Convert anemometer wind data from drone's coordinate system to Earth's coordinate system
+    and calculate true wind speed and direction.
 
     Parameters:
-        df (pd.DataFrame): The input dataframe.
-        aircraft_u (np.ndarray): The northward component of the aircraft's velocity.
-        aircraft_v (np.ndarray): The eastward component of the aircraft's velocity.
-        wind_u (np.ndarray): The northward component of the wind's velocity.
-        wind_v (np.ndarray): The eastward component of the wind's velocity.
+    df (pd.DataFrame): Input DataFrame containing drone yaw, anemometer data, and drone speed.
+    yaw_col (str): Column name for drone's yaw (in degrees, range [-180, 180]).
+    anemo_u_col (str): Column name for anemometer U (wind speed in drone's X direction, from port to starboard).
+    anemo_v_col (str): Column name for anemometer V (wind speed in drone's Y direction, from aft to nose).
+    easting_col (str): Column name for drone's speed from west to east
+    northing_col (str): Column name for drone's speed from south to north
 
     Returns:
-        pd.DataFrame: The dataframe updated with ground-relative wind speed and direction.
+    pd.DataFrame: DataFrame with calculated true wind speed ("windspeed") and true wind direction ("winddir").
     """
-    u_wind_ground = wind_u - aircraft_u
-    v_wind_ground = wind_v - aircraft_v
-    windspeed_ground = np.sqrt(u_wind_ground**2 + v_wind_ground**2)
-    winddir_ground = np.degrees(np.arctan2(u_wind_ground, v_wind_ground) % (2 * np.pi))
-    df["windspeed_ground"] = windspeed_ground
-    df["winddir_ground"] = winddir_ground
+
+    # Convert yaw to radians for trigonometry
+    yaw_rad = np.deg2rad(df[yaw_col] % 360)
+
+    # Rotate wind from drone to Earth coordinate system
+    rotated_U = df[anemo_u_col] * np.cos(yaw_rad) + df[anemo_v_col] * np.sin(yaw_rad)
+    rotated_V = -df[anemo_u_col] * np.sin(yaw_rad) + df[anemo_v_col] * np.cos(yaw_rad)
+
+    # Calculate true wind by accounting for drone's movement
+    true_U = -rotated_U - df[easting_col]
+    true_V = -rotated_V - df[northing_col]
+
+    # Compute wind speed and direction
+    df["windspeed"] = np.sqrt(true_U**2 + true_V**2)
+    df["winddir"] = np.degrees(np.arctan2(true_U, true_V)) % 360
+
     return df

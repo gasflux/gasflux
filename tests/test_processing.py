@@ -16,10 +16,14 @@ def load_cols(cols):
 
 
 def test_min_angular_diff_def():
-    a = 0
-    b = 359
-    diff = gasflux.processing.min_angular_displacement(a, b)
-    assert diff == 1, "Angular difference not calculated correctly"
+    def test_min_angular_displacement():
+        assert min_angular_displacement(10, 350) == 20
+        assert min_angular_displacement(0, 180) == 180
+        x = np.array([10, 0])
+        y = np.array([350, 180])
+        expected = np.array([20, 180])
+        result = min_angular_displacement(x, y)
+        assert np.all(result == expected), "Vectorized function failed"
 
 
 def test_circ_median():
@@ -173,3 +177,30 @@ def test_flatten_linear_plane():
         min_angular_displacement(plane_angle, input_plane_angle) < 3
         or min_angular_displacement(plane_angle, reciprocal_plane_angle) < 3
     ), "Plane angle not calculated correctly"
+
+
+def test_drone_anemo_to_point_wind():
+    data = {
+        "yaw": [0, 90, 0, -90, 180],
+        "anemo_u": [0, 0, 10, 10, 10],
+        "anemo_v": [0, 0, 0, 0, 0],
+        "easting": [0, 10, 0, 10, 0],
+        "northing": [0, 0, 0, 0, 10],
+    }
+    df_test = pd.DataFrame(data)
+    yaw_col = "yaw"
+    anemo_u_col = "anemo_u"
+    anemo_v_col = "anemo_v"
+    easting_col = "easting"
+    northing_col = "northing"
+    result_df = gasflux.processing.drone_anemo_to_point_wind(
+        df_test, yaw_col, anemo_u_col, anemo_v_col, easting_col, northing_col
+    )
+    expected_windspeed = np.array([0, 10, 10, np.sqrt(200), np.sqrt(200)])
+    expected_winddir = np.array(
+        [180, 270, 270, 225, 135]
+    )  # 180 not zero because of the way IEEE 754 handles floating point numbers
+    windspeed_diff = np.abs(result_df["windspeed"].values - expected_windspeed)
+    winddir_diff = gasflux.processing.min_angular_displacement(result_df["winddir"].values, expected_winddir)
+    assert np.all(windspeed_diff < 1e-10), "Wind speed not calculated correctly"
+    assert np.all(np.array(winddir_diff) < 3), "Wind direction not calculated correctly"
