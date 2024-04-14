@@ -1,6 +1,6 @@
 [project]
 name = "gasflux"
-version = "0.1.0"
+version = "0.1.1"
 description = "A package to calculate gas emissions fluxes from natural and anthropogenic sources"
 authors = [{ name = "Jamie McQuilkin", email = "jamie.mcquilkin@gmail.com" }]
 license = { text = "AGPL-3.0" }
