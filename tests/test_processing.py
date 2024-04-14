@@ -7,8 +7,8 @@ from gasflux.processing import min_angular_displacement
 import pytest
 
 
-testdf = pd.read_csv(Path(__file__).parent / "data" / "testdata.csv")
-testconfig = yaml.safe_load(open(Path(__file__).parent / "testconfig.yaml"))
+testdf = pd.read_csv(Path(__file__).parents[1] / "src" / "gasflux" / "testdata" / "testdata.csv")
+testconfig = yaml.safe_load(open(Path(__file__).parents[1] / "src" / "gasflux" / "testdata" / "testconfig.yaml"))
 
 
 def load_cols(cols):
