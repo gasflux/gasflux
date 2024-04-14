@@ -7,8 +7,8 @@ import pytest
 @pytest.fixture
 def setup_test_environment(tmp_path):
     """Prepare actual test data and configuration with a modified output directory."""
-    df_path = Path(__file__).parent / "data" / "testdata.csv"
-    config_path = Path(__file__).parent / "testconfig.yaml"
+    df_path = Path(__file__).parents[1] / "src" / "gasflux" / "testdata" / "testdata.csv"
+    config_path = Path(__file__).parents[1] / "src" / "gasflux" / "testdata" / "testconfig.yaml"
 
     with open(config_path) as f:
         config = yaml.safe_load(f)
@@ -32,7 +32,7 @@ def test_process_main_config_output(setup_test_environment):
     assert len(processing_run_dirs) > 0, "No processing run directory found."
     processing_run_dir = processing_run_dirs[0]
 
-    with open(Path(__file__).parent / "testconfig.yaml") as f:
+    with open(temp_config_path) as f:
         original_config = yaml.safe_load(f)
 
     for gas in original_config.get("gases", []):

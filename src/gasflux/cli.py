@@ -23,8 +23,8 @@ def find_config_file(path: Path, recursive: bool = True):
 
 def process_command(data_path: str, config_path: str, test: bool):
     if test:
-        data_file = Path(__file__).parent.parent.parent / "tests" / "data" / "testdata.csv"
-        config_file = Path(__file__).parent.parent.parent / "tests" / "testconfig.yaml"
+        data_file = Path(__file__).parent / "testdata" / "testdata.csv"
+        config_file = Path(__file__).parent / "testdata" / "testconfig.yaml"
         process_main(data_file, config_file)
     else:
         dpath_obj = Path(data_path)

@@ -12,7 +12,7 @@ import gasflux
 
 
 def load_config() -> dict:
-    file_path = Path(__file__).parent / "testconfig.yaml"
+    file_path = Path(__file__).parent / "testdata" / "testconfig.yaml"
     with open(file_path) as file:
         return yaml.safe_load(file)
 
@@ -323,8 +323,8 @@ def main():
     data.generate_data()
     data.generate_sampling_flight()
     data.plot_data(logwind=False, windspeed=False, winddir=False, gas=False, scatter_3d=True)
-    data.df_min.to_csv(Path(__file__).parent.parent / "tests" / "data" / "exampledata.csv", index=False)
-    data.df.to_csv(Path(__file__).parent.parent / "tests" / "data" / "testdata.csv", index=False)
+    data.df_min.to_csv(Path(__file__).parent / "testdata" / "exampledata.csv", index=False)
+    data.df.to_csv(Path(__file__).parent / "testdata" / "testdata.csv", index=False)
 
 
 if __name__ == "__main__":

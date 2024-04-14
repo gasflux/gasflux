@@ -8,4 +8,5 @@ pytest-mock
 python-semantic-release
 ruff
 safety
+twine
 vulture

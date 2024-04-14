@@ -28,7 +28,7 @@ def mass_balance_report(
     windrose_fig: go.Figure,
 ) -> str:
     """Generate a mass balance report."""
-    template_path = Path(__file__).parents[2] / "templates" / "mass_balance_template.html"
+    template_path = Path(__file__).parent / "templates" / "mass_balance_template.html"
 
     # Convert the figures to HTML
     plot_htmls = {}
