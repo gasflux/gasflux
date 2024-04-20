@@ -544,7 +544,9 @@ def flatten_linear_plane(
 ## Functions for circular/spiral flights ##
 
 
-def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[pd.DataFrame, float, float, float]:
+def circle_deviation(
+    df: pd.DataFrame, x_col: str = "utm_easting", y_col: str = "utm_northing"
+) -> tuple[np.ndarray, np.ndarray, float]:
     """
     Calculates the deviation of points from a fitted circle and their azimuth angles.
 

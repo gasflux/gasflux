@@ -208,6 +208,22 @@ class SpiralSpatialProcessingStrategy(SpatialProcessingStrategy):
             )
 
 
+class SpiralSpatialProcessingStrategy(SpatialProcessingStrategy):
+    def process(self):
+        logger.info("Applying spiral spatial processing")
+        self.data_processor.dfs["original"] = self.data_processor.df.copy()
+        self.data_processor.df["circ_deviation"], self.data_processor.df["circ_azimuth"], df_radius = (
+            gasflux.processing.circle_deviation(self.data_processor.df)
+        )
+        df = self.data_processor.df[
+            self.data_processor.df["circ_deviation"].between(-df_radius / 10, df_radius / 10)
+        ].copy()  # 10% radius tolerance
+        df = gasflux.processing.recentre_azimuth(df, r=df_radius)
+        df["x"] = df["circumference_distance"]
+        for gas in self.data_processor.gases:
+            self.data_processor.df = gasflux.gas.gas_flux_column(self.data_processor.df, gas)
+
+
 class InterpolationStrategy(ABC):
     def __init__(self, data_processor):
         self.data_processor = data_processor
