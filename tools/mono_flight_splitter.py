@@ -15,24 +15,26 @@ import gasflux
 colorama.init()
 
 
-def main(target_dir, search_string, output_dir=None):
+def main(target_dir, search_string, filter_mask, output_dir=None):
     df_list = {}
-    for file in Path(target_dir).rglob(search_string):
-        df = pd.read_csv(file)
-        df_list[file] = df
+    for file_path in Path(target_dir).rglob(search_string):
+        df = pd.read_csv(file_path)
+        df_list[file_path] = df
 
-    for path, df in df_list.items():
+    for file_path, df in df_list.items():
         print(colorama.Fore.WHITE + "----------------------------------------")
+        if filter_mask in df.columns:  # check for boolean mask columns
+            df = df[~df[filter_mask]].reset_index(drop=True)
         df, groupdict = gasflux.processing.monotonic_transect_groups(df)
         last_transect = None
         last_group_trend = None
         for group in df["group"].unique():
             # leaving this out for now as the group folder is a good identifier
             # if len(df['group'].unique()) == 1:
-            #     print(colorama.Fore.RED + f'Skipping{path.name} - only one group')
+            #     print(colorama.Fore.RED + f'Skipping{file_path.name} - only one group')
             #     continue
             group_df = df[df["group"] == group]
-            avg_altitudes = group_df.groupby("transect")["altitude"].mean().values
+            avg_altitudes = group_df.groupby("transect_num")["altitude_ato"].mean().values
             avg_change = (
                 sum([avg_altitudes[i + 1] - avg_altitudes[i] for i in range(len(avg_altitudes) - 1)])
                 / len(avg_altitudes)
@@ -44,7 +46,7 @@ def main(target_dir, search_string, output_dir=None):
             # add last transect from previous group if there's a change in trend
             if last_group_trend and last_group_trend != current_group_trend and last_transect is not None:
                 group_df = pd.concat([last_transect, group_df])
-                avg_altitudes = group_df.groupby("transect")["altitude"].mean().values
+                avg_altitudes = group_df.groupby("transect_num")["altitude_ato"].mean().values
             avg_altitudes = np.array(avg_altitudes)
             # check if the group is monotonic
             is_monotonic = np.all(np.diff(avg_altitudes) > 0) or np.all(np.diff(avg_altitudes) < 0)
@@ -52,33 +54,32 @@ def main(target_dir, search_string, output_dir=None):
                 print(f"group {group} is not monotonic - check the code!")
             formatted_avg_altitudes = ", ".join([f"{alt:.1f}" for alt in avg_altitudes])
             # do it where transect is the maximum transect number
-            last_transect = group_df[group_df["transect"] == group_df["transect"].max()].copy()
-            last_transect.loc[:, "transect"] = 0
+            last_transect = group_df[group_df["transect_num"] == group_df["transect_num"].max()].copy()
+            last_transect.loc[:, "transect_num"] = 0
             last_group_trend = current_group_trend
-            unique_transects = len(group_df["transect"].unique())
+            unique_transects = len(group_df["transect_num"].unique())
             if unique_transects < 3:
                 print(
-                    colorama.Fore.RED
-                    + f"Not saving {group} - not enough transects ({unique_transects} transects \
-                        at {formatted_avg_altitudes}m)"
+                    colorama.Fore.RED + f"Not saving {group} - too few transects"
+                    f"({unique_transects} transects at {formatted_avg_altitudes}m)"
                 )
             else:
-                path = Path(path)
+                file_path = Path(file_path)
                 if output_dir:
                     output_path = Path(
                         Path(output_dir)
-                        / f"{path.parents[1].name}"
-                        / f"{path.parent.name}_{group}"
-                        / f"{path.stem}_{group}.csv"
+                        / f"{file_path.parents[1].name}"
+                        / f"{file_path.parent.name}_{group}"
+                        / f"{file_path.stem}_{group}.csv"
                     )
                 else:
                     # assuming in date and time folder
                     output_path = Path(
-                        path.parent.parent.parent.parent
+                        file_path.parent.parent.parent  # time -> date -> analysis
                         / "splits"
-                        / path.parent.parent.name
-                        / f"{path.parent.name}_{group}"
-                        / f"{path.stem}_{group}.csv"
+                        / file_path.parent.parent.name  # date
+                        / f"{file_path.parent.name}_{group}"  # time + group
+                        / f"{file_path.stem}_{group}.csv"
                     )
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 group_df.to_csv(output_path, index=False)
@@ -93,6 +94,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--target-dir", help="the directory to search for csvs", default="survey")
     parser.add_argument("--search-string", help="the string to search for in the directory", default="*filtered.csv")
+    parser.add_argument(
+        "--filter-mask", help="name of a column with a boolean filter; TRUE means discard", default="filtered"
+    )
     parser.add_argument("--output-dir", help="the metadirectory to save the date/time/csvs to", required=False)
+
     args = parser.parse_args()
-    main(args.target_dir, args.search_string, args.output_dir)
+    main(
+        args.target_dir,
+        args.search_string,
+        args.filter_mask,
+        args.output_dir,
+    )

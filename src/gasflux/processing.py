@@ -332,7 +332,7 @@ def monotonic_transect_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[int,
     """
 
     df = add_transect_azimuth_switches(df)
-    alt_dict = dict(df.groupby("transect")["altitude_ato"].mean())
+    alt_dict = dict(df.groupby("transect_num")["altitude_ato"].mean())
 
     group_dict = {}
     previous_altitude = None
