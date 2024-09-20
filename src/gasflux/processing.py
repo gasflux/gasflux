@@ -628,19 +628,11 @@ def drone_anemo_to_point_wind(
     Returns:
     pd.DataFrame: DataFrame with calculated true wind speed ("windspeed") and true wind direction ("winddir").
     """
-
-    # Convert yaw to radians for trigonometry
     yaw_rad = np.deg2rad(df[yaw_col] % 360)
-
-    # Rotate wind from drone to Earth coordinate system
     rotated_U = df[anemo_u_col] * np.cos(yaw_rad) + df[anemo_v_col] * np.sin(yaw_rad)
     rotated_V = -df[anemo_u_col] * np.sin(yaw_rad) + df[anemo_v_col] * np.cos(yaw_rad)
-
-    # Calculate true wind by accounting for drone's movement
     true_U = -rotated_U - df[easting_col]
     true_V = -rotated_V - df[northing_col]
-
-    # Compute wind speed and direction
     df["windspeed"] = np.sqrt(true_U**2 + true_V**2)
     df["winddir"] = np.degrees(np.arctan2(true_U, true_V)) % 360
 
