@@ -80,7 +80,7 @@ required_cols:
   pressure: [900, 1100]
 
 filters:
-  heading_filter:
+  course_filter:
     azimuth_filter: 10
     azimuth_window: 5
     elevation_filter: 5

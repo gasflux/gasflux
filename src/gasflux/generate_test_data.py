@@ -232,7 +232,7 @@ class SimulatedData2D:
         sample_data(self)
 
         self.df = gasflux.pre_processing.add_utm(self.df)
-        self.df = gasflux.pre_processing.add_heading(self.df)
+        self.df = gasflux.pre_processing.add_course(self.df)
 
         self.df_min = self.df.copy()
         retained_columns = [

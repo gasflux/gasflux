@@ -67,23 +67,23 @@ def wind_offset_correction(df: pd.DataFrame, plane_angle: float) -> pd.DataFrame
 
 
 def bimodal_azimuth(
-    df: pd.DataFrame, heading_col: str = "azimuth_heading", min_altitude: int = 5, min_diff: int = 160
+    df: pd.DataFrame, course_col: str = "course_azimuth", min_altitude: int = 5, min_diff: int = 160
 ) -> tuple[float, float]:
     """
-    Identifies the two most frequent azimuth headings in the dataset, ensuring they are sufficiently
+    Identifies the two most frequent azimuth courses in the dataset, ensuring they are sufficiently
     distinct. Filters data by altitude and removes NaNs before analysis.
 
     Parameters:
         df (pd.DataFrame): The input dataframe.
-        heading_col (str): Column name for azimuth heading data. Default is "azimuth_heading".
+        course_col (str): Column name for course azimuth data. Default is "course_azimuth".
         min_altitude (int): Minimum altitude for data to be included. Default is 5.
         min_diff (int): Minimum difference between the two modes. Default is 160.
 
     Returns:
-        tuple: Two modes of the azimuth heading.
+        tuple: Two modes of the course azimuth.
     """
     df = df[df["altitude_ato"] >= min_altitude]
-    data = df[heading_col].dropna().to_numpy()
+    data = df[course_col].dropna().to_numpy()
     hist, edges = np.histogram(data, bins=50)
     edgedist = edges[1] - edges[0]
     bin_centers = edges[:-1] + edgedist / 2
@@ -108,23 +108,23 @@ def bimodal_azimuth(
 
 # this returns modes of slope from -90 to 90 degrees.
 def bimodal_elevation(
-    df: pd.DataFrame, heading_col: str = "elevation_heading", min_flight_altitude: float = 5, max_slope: float = 70
+    df: pd.DataFrame, course_col: str = "course_elevation", min_flight_altitude: float = 5, max_slope: float = 70
 ) -> tuple[float, float]:
     """
-    Identifies the most frequent elevation heading in the dataset, adjusted for vertical movements.
+    Identifies the most frequent course elevation in the dataset, adjusted for vertical movements.
     Filters data by altitude and removes NaNs before analysis.
 
     Parameters:
         df (pd.DataFrame): The input dataframe.
-        heading_col (str): Column name for elevation heading data. Default is "elevation_heading".
+        course_col (str): Column name for course elevation data. Default is "course_elevation".
         min_altitude (int): Minimum altitude for data to be included. Default is 5.
         max_slope (int): Maximum slope to consider, avoTupleiding vertical movements. Default is 70.
 
     Returns:
-        tuple: Mode of elevation heading and its negative, representing possible ascent/descent angles.
+        tuple: Mode of course elevation and its negative, representing possible ascent/descent angles.
     """
     df = df[df["altitude_ato"] >= df["altitude_ato"].min() + min_flight_altitude]
-    data = df[heading_col].to_numpy()
+    data = df[course_col].to_numpy()
     data = np.abs(data[~np.isnan(data)])
     # to get around the edge case where vertical movements are modal
     data = data[data < max_slope]
@@ -168,24 +168,22 @@ def altitude_transect_splitter(df: pd.DataFrame) -> tuple[pd.DataFrame, Figure]:
 
 def add_transect_azimuth_switches(df: pd.DataFrame, threshold=150, shift=3) -> pd.DataFrame:
     """
-    Identifies transects based on significant changes in azimuth heading, incrementing a transect
+    Identifies transects based on significant changes in course azimuth, incrementing a transect
     counter to distinguish different flight paths. This is a really crude function and should probably
     be only used with data that's already been filtered in some way.
 
     Parameters:
-        df (pd.DataFrame): The input dataframe with azimuth headings.
+        df (pd.DataFrame): The input dataframe with azimuth courses.
 
     Returns:
         pd.DataFrame: The modified dataframe with a new 'transect' column indicating transect IDs.
     """
     df = df.copy()
     df["transect_num"] = 0
-    df["prev_azimuth_heading"] = df["azimuth_heading"].shift(
-        shift
-    )  # this gives better behaviour for very neat transects
+    df["prev_azimuth_course"] = df["course_azimuth"].shift(shift)  # this gives better behaviour for very neat transects
     df["deg_displace"] = df.apply(
-        lambda row: min_angular_displacement(row["azimuth_heading"], row["prev_azimuth_heading"])
-        if not pd.isnull(row["prev_azimuth_heading"])
+        lambda row: min_angular_displacement(row["course_azimuth"], row["prev_azimuth_course"])
+        if not pd.isnull(row["prev_azimuth_course"])
         else np.nan,
         axis=1,
     )
@@ -202,43 +200,43 @@ def add_transect_azimuth_switches(df: pd.DataFrame, threshold=150, shift=3) -> p
     df["transect_num"] = df["transect_num"].shift(-shift)  # recorrect for shift
     df["transect_num"] = df["transect_num"].cumsum() + 1  # 1 indexed
     df["transect_num"] = df["transect_num"].ffill()
-    df = df.drop(columns=["prev_azimuth_heading", "deg_displace"])
+    df = df.drop(columns=["prev_azimuth_course", "deg_displace"])
     return df
 
 
-def heading_filter(
+def course_filter(
     df: pd.DataFrame, azimuth_filter: float, azimuth_window: int, elevation_filter: float
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Filters data based on specified azimuth and elevation headings, aiming to isolate transects that
+    Filters data based on specified azimuth and elevation courses, aiming to isolate transects that
     align with main flight directions. First elevation is filtered to remove significant climbs or descents
-    (beware terrain-following flights). Bimodal azimuth headings are calculated and used to filter the
+    (beware terrain-following flights). Bimodal azimuth courses are calculated and used to filter the
     data based on the main flight directions, with a rolling median applied (the window) to smooth the data.
 
     Parameters:
         df (pd.DataFrame): The input dataframe.
-        azimuth_filter (float): The tolerance for deviation from the main azimuth headings.
-        azimuth_window (int): The window size for rolling median calculation of azimuth headings.
+        azimuth_filter (float): The tolerance for deviation from the main azimuth courses.
+        azimuth_window (int): The window size for rolling median calculation of azimuth courses.
         elevation_filter (float): The tolerance for deviation from horizontal flight.
 
     Returns:
         tuple: The filtered dataframe and the original unfiltered dataframe for comparison.
     """
     df_filtered = df.copy()
-    df_filtered = df_filtered[abs(df["elevation_heading"]) < elevation_filter]
+    df_filtered = df_filtered[abs(df["course_elevation"]) < elevation_filter]
 
     azi1, azi2 = bimodal_azimuth(df_filtered)
-    logging.info(f"Drone appears to be flying mainly on the headings {azi1:.2f} degrees and {azi2:.2f} degrees")
+    logging.info(f"Drone appears to be flying mainly on the courses {azi1:.2f} degrees and {azi2:.2f} degrees")
 
-    df_filtered["rolling_azimuth_heading"] = (
-        df_filtered["azimuth_heading"].rolling(azimuth_window, center=True).apply(lambda x: circ_median(x), raw=True)
+    df_filtered["rolling_azimuth_course"] = (
+        df_filtered["course_azimuth"].rolling(azimuth_window, center=True).apply(lambda x: circ_median(x), raw=True)
     )
 
     df_filtered = df_filtered[
-        (df_filtered["rolling_azimuth_heading"] < azi1 + azimuth_filter)
-        & (df_filtered["rolling_azimuth_heading"] > azi1 - azimuth_filter)
-        | (df_filtered["rolling_azimuth_heading"] < azi2 + azimuth_filter)
-        & (df_filtered["rolling_azimuth_heading"] > azi2 - azimuth_filter)
+        (df_filtered["rolling_azimuth_course"] < azi1 + azimuth_filter)
+        & (df_filtered["rolling_azimuth_course"] > azi1 - azimuth_filter)
+        | (df_filtered["rolling_azimuth_course"] < azi2 + azimuth_filter)
+        & (df_filtered["rolling_azimuth_course"] > azi2 - azimuth_filter)
     ]
 
     return df_filtered, df
@@ -306,7 +304,7 @@ def largest_monotonic_transect_series(df: pd.DataFrame) -> tuple[pd.DataFrame, i
     Returns:
         tuple: The filtered dataframe, start transect, and end transect of the largest monotonic series.
     """
-    df = add_transect_azimuth_switches(df)  # heading switches
+    df = add_transect_azimuth_switches(df)  # course switches
     alt_dict = dict(df.groupby("transect_num")["altitude_ato"].mean())
     starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
     # filter to the biggest monotonic series of values
@@ -374,14 +372,14 @@ def remove_non_transects(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Filters the dataframe to remove segments not matching the criteria for being considered as transects,
-    based on azimuth and elevation headings and segment length.
+    based on azimuth and elevation courses and segment length.
 
     Parameters:
         df (pd.DataFrame): The input dataframe.
         chain_length (int): Minimum number of consecutive points to be considered a transect. Default is 70.
-        azimuth_tolerance (int): Tolerance for deviation from major azimuth headings. Default is 10.
-        elevation_tolerance (int): Tolerance for deviation from major elevation headings. Default is 40.
-        smoothing_window (int): Window size for rolling median smoothing of headings. Default is 5. Rolling median
+        azimuth_tolerance (int): Tolerance for deviation from major azimuth courses. Default is 10.
+        elevation_tolerance (int): Tolerance for deviation from major elevation courses. Default is 40.
+        smoothing_window (int): Window size for rolling median smoothing of courses. Default is 5. Rolling median
             avoids single point errors.
 
     Returns:
@@ -399,10 +397,10 @@ def remove_non_transects(
     def split_runs_on_azimuth_inversion(df, runs, azimuth_inversion_threshold=120):
         split_runs = []
         for run in runs:
-            last_azimuth = df.iloc[run[0][0]]["smoothed_azimuth_heading"]
+            last_azimuth = df.iloc[run[0][0]]["smoothed_azimuth_course"]
             current_run = [run[0]]
             for point in run[1:]:
-                current_azimuth = df.iloc[point[0]]["smoothed_azimuth_heading"]
+                current_azimuth = df.iloc[point[0]]["smoothed_azimuth_course"]
                 if min_angular_displacement(current_azimuth, last_azimuth) > azimuth_inversion_threshold:
                     split_runs.append(current_run)
                     current_run = [point]
@@ -419,33 +417,33 @@ def remove_non_transects(
     df_removed["filtered_by_chain"] = False
 
     # Apply azimuth filter
-    major_azi_headings = bimodal_azimuth(df, heading_col="azimuth_heading")
-    major_elev_headings = bimodal_elevation(df, heading_col="elevation_heading")
+    major_azi_courses = bimodal_azimuth(df, course_col="course_azimuth")
+    major_elev_courses = bimodal_elevation(df, course_col="course_elevation")
 
-    # Apply rolling median to azimuth and elevation headings and store them in new columns
-    df_removed["smoothed_azimuth_heading"] = (
-        df_removed["azimuth_heading"]
+    # Apply rolling median to azimuth and elevation courses and store them in new columns
+    df_removed["smoothed_azimuth_course"] = (
+        df_removed["course_azimuth"]
         .rolling(smoothing_window, center=True)
         .apply(lambda x: circmean(x, 360, 0), raw=True)
-        .fillna(df_removed["azimuth_heading"], inplace=False)
+        .fillna(df_removed["course_azimuth"], inplace=False)
     )
 
-    df_removed["smoothed_elevation_heading"] = (
-        df_removed["elevation_heading"]
+    df_removed["smoothed_elevation_course"] = (
+        df_removed["course_elevation"]
         .rolling(smoothing_window, center=True)
         .apply(lambda x: circmean(x, 360, 0), raw=True)
-        .fillna(df_removed["elevation_heading"], inplace=False)
+        .fillna(df_removed["course_elevation"], inplace=False)
     )
 
-    azimuth_mask = df_removed["smoothed_azimuth_heading"].apply(
-        lambda x: any([min_angular_displacement(x, major) <= azimuth_tolerance for major in major_azi_headings])
+    azimuth_mask = df_removed["smoothed_azimuth_course"].apply(
+        lambda x: any([min_angular_displacement(x, major) <= azimuth_tolerance for major in major_azi_courses])
     )
 
     df_removed.loc[~azimuth_mask, "filtered_by_azimuth"] = True
 
     # Apply elevation filter
-    elevation_mask = df_removed["smoothed_elevation_heading"].apply(
-        lambda x: any([min_angular_displacement(x, major) <= elevation_tolerance for major in major_elev_headings])
+    elevation_mask = df_removed["smoothed_elevation_course"].apply(
+        lambda x: any([min_angular_displacement(x, major) <= elevation_tolerance for major in major_elev_courses])
     )
     df_removed.loc[~elevation_mask, "filtered_by_elevation"] = True
 

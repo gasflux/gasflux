@@ -69,7 +69,7 @@ def test_wind_offset_correction_parametrized(plane_angle, expected_winddir_rel, 
 def test_bimodal_azimuth():
     input_mode = testconfig["transect_azimuth"]
     input_reciprocal_mode = (input_mode + 180) % 360
-    df = load_cols(["azimuth_heading", "altitude_ato"])
+    df = load_cols(["course_azimuth", "altitude_ato"])
     mode1, mode2 = gasflux.processing.bimodal_azimuth(df)
     assert (
         min_angular_displacement(mode1, input_mode) < 3 or min_angular_displacement(mode1, input_reciprocal_mode) < 3
@@ -84,7 +84,7 @@ def test_bimodal_azimuth():
 
 
 def test_bimodal_elevation():
-    df = load_cols(["elevation_heading", "altitude_ato"])
+    df = load_cols(["course_elevation", "altitude_ato"])
     input_mode = 0
     input_reciprocal_mode = 0 - input_mode
     mode1, mode2 = gasflux.processing.bimodal_elevation(df)
@@ -111,28 +111,28 @@ def test_altitude_transect_splitter():
 
 
 def test_add_transect_azimuth_switches():
-    df = load_cols(["azimuth_heading"])
+    df = load_cols(["course_azimuth"])
     df = gasflux.processing.add_transect_azimuth_switches(df)
     assert (
         df["transect_num"].nunique() == testconfig["number_of_transects"]
     ), "Transect azimuth switches not added to dataframe"
 
 
-def test_heading_filter():
-    df = load_cols(["azimuth_heading", "elevation_heading", "altitude_ato"])
-    azimuth_filter = testconfig["filters"]["heading_filter"]["azimuth_filter"]
-    azimuth_window = testconfig["filters"]["heading_filter"]["azimuth_window"]
-    elevation_filter = testconfig["filters"]["heading_filter"]["elevation_filter"]
-    df_filtered, df_unfiltered = gasflux.processing.heading_filter(
+def test_course_filter():
+    df = load_cols(["course_azimuth", "course_elevation", "altitude_ato"])
+    azimuth_filter = testconfig["filters"]["course_filter"]["azimuth_filter"]
+    azimuth_window = testconfig["filters"]["course_filter"]["azimuth_window"]
+    elevation_filter = testconfig["filters"]["course_filter"]["elevation_filter"]
+    df_filtered, df_unfiltered = gasflux.processing.course_filter(
         df, azimuth_filter=azimuth_filter, azimuth_window=azimuth_window, elevation_filter=elevation_filter
     )
     input_mode = testconfig["transect_azimuth"]
     input_reciprocal_mode = (input_mode + 180) % 360
     # assert that the filtered dataframe contains the expected azimuth or its reciprocal within the window
-    df_filtered["near_mode1"] = df_filtered["rolling_azimuth_heading"].apply(
+    df_filtered["near_mode1"] = df_filtered["rolling_azimuth_course"].apply(
         lambda x: min_angular_displacement(x, input_mode) < azimuth_window
     )
-    df_filtered["near_mode2"] = df_filtered["rolling_azimuth_heading"].apply(
+    df_filtered["near_mode2"] = df_filtered["rolling_azimuth_course"].apply(
         lambda x: min_angular_displacement(x, input_reciprocal_mode) < azimuth_window
     )
     assert (
@@ -149,7 +149,7 @@ def test_mCount_max():
 
 def test_largest_monotonic_transect_series():
     df = load_cols(
-        ["timestamp", "altitude_ato", "azimuth_heading", "longitude", "latitude", "utm_easting", "utm_northing"]
+        ["timestamp", "altitude_ato", "course_azimuth", "longitude", "latitude", "utm_easting", "utm_northing"]
     )
     df, starttransect, endtransect = gasflux.processing.largest_monotonic_transect_series(df)
     starttransect = 1
@@ -160,7 +160,7 @@ def test_largest_monotonic_transect_series():
 
 def test_remove_non_transects():
     df = load_cols(
-        ["altitude_ato", "azimuth_heading", "elevation_heading", "longitude", "latitude", "utm_easting", "utm_northing"]
+        ["altitude_ato", "course_azimuth", "course_elevation", "longitude", "latitude", "utm_easting", "utm_northing"]
     )
     retained_df, removed_df = gasflux.processing.remove_non_transects(df)
     assert retained_df is not None, "Retained dataframe is None"
