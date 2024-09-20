@@ -37,7 +37,7 @@ def scatter_3d(
     x: str = "utm_easting",
     y: str = "utm_northing",
     z: str = "altitude_ato",
-    headings: bool = False,
+    courses: bool = False,
 ):
     fig = px.scatter_3d(df, x=x, y=y, z=z)
 
@@ -52,12 +52,12 @@ def scatter_3d(
             "idx: %{pointNumber}",
         ]
 
-        if headings:
-            custom_data.extend([df["elevation_heading"], df["azimuth_heading"]])
+        if courses:
+            custom_data.extend([df["course_elevation"], df["course_azimuth"]])
             hovertemplate.extend(
                 [
-                    "elevation heading: %{customdata[1]:.2f}",
-                    "azimuth heading: %{customdata[2]:.2f}",
+                    "course elevation: %{customdata[1]:.2f}",
+                    "course azimuth: %{customdata[2]:.2f}",
                 ]
             )
 

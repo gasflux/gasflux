@@ -233,7 +233,7 @@ class DataProcessor:
 
     def process(self):
         self.df = gasflux.pre_processing.add_utm(self.df)
-        self.df = gasflux.pre_processing.add_heading(self.df)
+        self.df = gasflux.pre_processing.add_course(self.df)
         DataValidator(self.df, self.config).validate()
         self.background_strategy.process()
         self.sensor_strategy.process()
