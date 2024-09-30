@@ -6,7 +6,7 @@ output_dir: ~/gasflux_reports
 required_cols:
   latitude: [-90, 90]
   longitude: [-180, 180]
-  altitude_ato: [-200, 500] # meters above takeoff
+  height_ato: [-200, 500] # meters above takeoff
   windspeed: [0, 50] # m/s
   winddir: [0, 360] # degrees
   temperature: [-50, 60] # degrees Celsius

@@ -34,7 +34,7 @@ def main(target_dir, search_string, filter_mask, output_dir=None):
             #     print(colorama.Fore.RED + f'Skipping{file_path.name} - only one group')
             #     continue
             group_df = df[df["group"] == group]
-            avg_altitudes = group_df.groupby("transect_num")["altitude_ato"].mean().values
+            avg_altitudes = group_df.groupby("transect_num")["height_ato"].mean().values
             avg_change = (
                 sum([avg_altitudes[i + 1] - avg_altitudes[i] for i in range(len(avg_altitudes) - 1)])
                 / len(avg_altitudes)
@@ -46,7 +46,7 @@ def main(target_dir, search_string, filter_mask, output_dir=None):
             # add last transect from previous group if there's a change in trend
             if last_group_trend and last_group_trend != current_group_trend and last_transect is not None:
                 group_df = pd.concat([last_transect, group_df])
-                avg_altitudes = group_df.groupby("transect_num")["altitude_ato"].mean().values
+                avg_altitudes = group_df.groupby("transect_num")["height_ato"].mean().values
             avg_altitudes = np.array(avg_altitudes)
             # check if the group is monotonic
             is_monotonic = np.all(np.diff(avg_altitudes) > 0) or np.all(np.diff(avg_altitudes) < 0)

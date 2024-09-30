@@ -155,7 +155,7 @@ class SimulatedData2D:
                 "latitude",
                 "longitude",
                 "x",
-                "altitude_ato",
+                "height_ato",
                 "windspeed",
                 "temperature",
                 "pressure",
@@ -207,7 +207,7 @@ class SimulatedData2D:
         for i in range(self.number_of_transects):
             start_index = i * self.points_per_transect
             end_index = start_index + self.points_per_transect
-            self.df.loc[start_index : end_index - 1, "altitude_ato"] = (
+            self.df.loc[start_index : end_index - 1, "height_ato"] = (
                 self.sampling_altitude_ato_range[0] + i * altitude_step
             )
         self.df["temperature"] = self.temperature
@@ -217,7 +217,7 @@ class SimulatedData2D:
             self.df["norm_x"] = (self.df["x"] - self.scene_horizontal_range[0]) / (
                 self.scene_horizontal_range[1] - self.scene_horizontal_range[0]
             )
-            self.df["norm_altitude_ato"] = (self.df["altitude_ato"] - self.scene_altitude_range[0]) / (
+            self.df["norm_altitude_ato"] = (self.df["height_ato"] - self.scene_altitude_range[0]) / (
                 self.scene_altitude_range[1] - self.scene_altitude_range[0]
             )
             self.df["index_x"] = np.floor(self.df["norm_x"] * (self.horizontal_pixels - 1)).astype(int)
@@ -239,7 +239,7 @@ class SimulatedData2D:
             "timestamp",
             "latitude",
             "longitude",
-            "altitude_ato",
+            "height_ato",
             "windspeed",
             "winddir",
             "temperature",

@@ -159,7 +159,7 @@ class CurtainSpatialProcessingStrategy(SpatialProcessingStrategy):
                 go.Scatter3d(
                     x=self.data_processor.dfs["removed"]["utm_easting"],
                     y=self.data_processor.dfs["removed"]["utm_northing"],
-                    z=self.data_processor.dfs["removed"]["altitude_ato"],
+                    z=self.data_processor.dfs["removed"]["height_ato"],
                     mode="markers",
                     marker={"size": 2, "color": "black", "symbol": "circle", "opacity": 0.5},
                 )
@@ -188,7 +188,7 @@ class KrigingInterpolationStrategy(InterpolationStrategy):
             ) = gasflux.interpolation.ordinary_kriging(
                 df=self.data_processor.df,
                 x="x",
-                y="altitude_ato",
+                y="height_ato",
                 gas=gas,
                 ordinary_kriging_settings=self.data_processor.config["ordinary_kriging_settings"],
                 **self.data_processor.config["semivariogram_settings"],

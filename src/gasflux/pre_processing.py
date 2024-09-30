@@ -54,7 +54,7 @@ def add_utm(df: pd.DataFrame) -> pd.DataFrame:
 # add columns for drone azimuth and elevation courses
 def add_course(df, rolling_window=1):
     df["hor_distance"] = np.sqrt((df["utm_northing"].diff()) ** 2 + (df["utm_easting"].diff()) ** 2)
-    df["vert_distance"] = df["altitude_ato"].diff()
+    df["vert_distance"] = df["height_ato"].diff()
     df["vert_distance"] = pd.to_numeric(df["vert_distance"], errors="coerce")
     df["hor_distance"] = pd.to_numeric(df["hor_distance"], errors="coerce")
     df["course_azimuth"] = (
