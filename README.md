@@ -37,7 +37,7 @@ Input data files must be csv-type (i.e. readable by `pandas`) and have the follo
 - `timestamp` (datetime)
 - `latitude` (float)
 - `longitude` (float)
-- `altitude_ato` (float) - altitude above takeoff
+- `height_ato` (float) - height above takeoff
 - `windspeed` (float) - in m/s, as measured or inferred at each measurement point
 - `winddir` (float) - in standard 0-360 degree format, relative to the earth
 - `temperature` (float) in degrees celsius

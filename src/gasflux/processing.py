@@ -67,22 +67,22 @@ def wind_offset_correction(df: pd.DataFrame, plane_angle: float) -> pd.DataFrame
 
 
 def bimodal_azimuth(
-    df: pd.DataFrame, course_col: str = "course_azimuth", min_altitude: int = 5, min_diff: int = 160
+    df: pd.DataFrame, course_col: str = "course_azimuth", min_height: int = 5, min_diff: int = 160
 ) -> tuple[float, float]:
     """
     Identifies the two most frequent azimuth courses in the dataset, ensuring they are sufficiently
-    distinct. Filters data by altitude and removes NaNs before analysis.
+    distinct. Filters data by height and removes NaNs before analysis.
 
     Parameters:
         df (pd.DataFrame): The input dataframe.
         course_col (str): Column name for course azimuth data. Default is "course_azimuth".
-        min_altitude (int): Minimum altitude for data to be included. Default is 5.
+        min_altitude (int): Minimum height (_ato typically) for data to be included. Default is 5.
         min_diff (int): Minimum difference between the two modes. Default is 160.
 
     Returns:
         tuple: Two modes of the course azimuth.
     """
-    df = df[df["altitude_ato"] >= min_altitude]
+    df = df[df["height_ato"] >= min_height]
     data = df[course_col].dropna().to_numpy()
     hist, edges = np.histogram(data, bins=50)
     edgedist = edges[1] - edges[0]
@@ -108,22 +108,22 @@ def bimodal_azimuth(
 
 # this returns modes of slope from -90 to 90 degrees.
 def bimodal_elevation(
-    df: pd.DataFrame, course_col: str = "course_elevation", min_flight_altitude: float = 5, max_slope: float = 70
+    df: pd.DataFrame, course_col: str = "course_elevation", min_height: float = 5, max_slope: float = 70
 ) -> tuple[float, float]:
     """
     Identifies the most frequent course elevation in the dataset, adjusted for vertical movements.
-    Filters data by altitude and removes NaNs before analysis.
+    Filters data by height and removes NaNs before analysis.
 
     Parameters:
         df (pd.DataFrame): The input dataframe.
         course_col (str): Column name for course elevation data. Default is "course_elevation".
-        min_altitude (int): Minimum altitude for data to be included. Default is 5.
+        min_height (int): Minimum height for data to be included. Default is 5.
         max_slope (int): Maximum slope to consider, avoTupleiding vertical movements. Default is 70.
 
     Returns:
         tuple: Mode of course elevation and its negative, representing possible ascent/descent angles.
     """
-    df = df[df["altitude_ato"] >= df["altitude_ato"].min() + min_flight_altitude]
+    df = df[df["height_ato"] >= df["height_ato"].min() + min_height]
     data = df[course_col].to_numpy()
     data = np.abs(data[~np.isnan(data)])
     # to get around the edge case where vertical movements are modal
@@ -134,35 +134,35 @@ def bimodal_elevation(
     return (mode, -mode)
 
 
-def altitude_transect_splitter(df: pd.DataFrame) -> tuple[pd.DataFrame, Figure]:
+def height_transect_splitter(df: pd.DataFrame, height_col: str = "height_ato") -> tuple[pd.DataFrame, Figure]:
     """
-    Splits the dataset into altitude-based transects and plots histogram peaks to identify prominent
-    altitude ranges. Only works if the flights are flat.
+    Splits the dataset into height-based transects and plots histogram peaks to identify prominent
+    height ranges. Only works if the flights are flat.
 
     Parameters:
-        df (pd.DataFrame): The input dataframe containing altitude data.
+        df (pd.DataFrame): The input dataframe containing height data.
 
     Returns:
         tuple: Modified dataframe with transect labels and a figure showing the histogram with peaks.
     """
     df = df.copy()
-    altitudes = df["altitude_ato"].to_numpy()
-    heights, bin_edges = np.histogram(altitudes, bins=40)
+    heights = df[height_col].to_numpy()
+    heights, bin_edges = np.histogram(heights, bins=40)
     bin_width = bin_edges[1] - bin_edges[0]
-    bin_edges = np.append(altitudes.min() - bin_width, bin_edges)  # avoid literal edge effects
-    bin_edges = np.append(bin_edges, altitudes.max() + bin_width)
+    bin_edges = np.append(heights.min() - bin_width, bin_edges)  # avoid literal edge effects
+    bin_edges = np.append(bin_edges, heights.max() + bin_width)
     heights = np.append(0, heights)
     heights = np.append(heights, 0)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     peaks, properties = find_peaks(heights)
     transect_edges = (bin_centers[peaks][:-1] + bin_centers[peaks][1:]) / 2
-    transect_edges = np.append(altitudes.min(), transect_edges)
-    transect_edges = np.append(transect_edges, altitudes.max())
+    transect_edges = np.append(heights.min(), transect_edges)
+    transect_edges = np.append(transect_edges, heights.max())
     fig, ax = plt.subplots()
     ax.stairs(edges=bin_edges, values=heights, fill=True)
     ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
     ax.vlines(transect_edges, ymin=0, ymax=max(heights), color="red")
-    df["transect_num"] = pd.cut(df["altitude_ato"], bins=list(transect_edges), labels=False, include_lowest=True)  # type: ignore
+    df["transect_num"] = pd.cut(df["height_ato"], bins=list(transect_edges), labels=False, include_lowest=True)  # type: ignore
     return df, fig
 
 
@@ -293,36 +293,44 @@ def mCount_max(data_dict: dict[int, float]) -> tuple[int, int]:
         return 0, 0
 
 
-def largest_monotonic_transect_series(df: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:
+def largest_monotonic_transect_series(
+    df: pd.DataFrame, transect_col: str = "transect_num", alt_col: str = "height_ato"
+) -> tuple[pd.DataFrame, int, int]:
     """
     Filters the input dataframe to include only the largest continuous series of transects based on
     monotonic altitude changes.
 
     Parameters:
         df (pd.DataFrame): The input dataframe with transect and altitude information.
+        transect_col (str): Column name for transect numbers. Default is "transect_num".
+        alt_col (str): Column name for altitude data. Default is "height_ato".
 
     Returns:
         tuple: The filtered dataframe, start transect, and end transect of the largest monotonic series.
     """
     df = add_transect_azimuth_switches(df)  # course switches
-    alt_dict = dict(df.groupby("transect_num")["altitude_ato"].mean())
+    alt_dict = dict(df.groupby(transect_col)[alt_col].mean())
     starttransect, endtransect = mCount_max(alt_dict)  # type: ignore
     # filter to the biggest monotonic series of values
-    df = df[(df["transect_num"] >= starttransect) & (df["transect_num"] <= endtransect)]
+    df = df[(df[transect_col] >= starttransect) & (df[transect_col] <= endtransect)]
     logging.info(
-        f"Parsed a flight of {len(np.unique(df['transect_num']))} transects from {alt_dict[starttransect]:.0f}m"
+        f"Parsed a flight of {len(np.unique(df[transect_col]))} transects from {alt_dict[starttransect]:.0f}m"
         f" to {alt_dict[endtransect]:.0f}m between {df['timestamp'].iloc[0]} and {df['timestamp'].iloc[-1]}",
     )
     return df, starttransect, endtransect
 
 
-def monotonic_transect_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[int, str]]:
+def monotonic_transect_groups(
+    df: pd.DataFrame, transect_col: str = "transect_num", alt_col: str = "height_ato"
+) -> tuple[pd.DataFrame, dict[int, str]]:
     """
     Groups transects into a dict of monotonic transect sequences based on altitude, facilitating analysis of continuous
     flight patterns. Current behaviour is to reuse end transects of previous sequences as the start of the next.
 
     Parameters:
         df (pd.DataFrame): The input dataframe with transect and altitude information.
+        transect_col (str): Column name for transect numbers. Default is "transect_num".
+        alt_col (str): Column name for altitude data. Default is "height_ato".
 
     Returns:
         tuple: The dataframe with a new 'group' column indicating the monotonic group ID, and a
@@ -330,7 +338,7 @@ def monotonic_transect_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[int,
     """
 
     df = add_transect_azimuth_switches(df)
-    alt_dict = dict(df.groupby("transect_num")["altitude_ato"].mean())
+    alt_dict = dict(df.groupby(transect_col)[alt_col].mean())
 
     group_dict = {}
     previous_altitude = None
@@ -338,13 +346,13 @@ def monotonic_transect_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[int,
     previous_trend = None
     first_transect_in_series = True
 
-    for transect, altitude_ato in alt_dict.items():
+    for transect, altitude in alt_dict.items():
         if previous_altitude is None:
             group_dict[transect] = f"Group_{current_group}"
         else:
-            if altitude_ato == previous_altitude:
-                raise ValueError("Error: altitude_ato is the same as the previous transect")
-            elif altitude_ato > previous_altitude:
+            if altitude == previous_altitude:
+                raise ValueError("Error: altitude is the same as the previous transect")
+            elif altitude > previous_altitude:
                 current_trend = "ascending"
             else:
                 current_trend = "descending"
@@ -357,7 +365,7 @@ def monotonic_transect_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[int,
                 first_transect_in_series = False
             group_dict[transect] = f"Group_{current_group}"
             previous_trend = current_trend
-        previous_altitude = altitude_ato
+        previous_altitude = altitude
     df["group"] = df["transect_num"].map(group_dict)
 
     return df, group_dict
@@ -465,14 +473,17 @@ def remove_non_transects(
     return df_removed, df_retained
 
 
-def flatten_linear_plane(df: pd.DataFrame, distance_filter: float = 10000) -> tuple[pd.DataFrame, float]:
+def flatten_linear_plane(
+    df: pd.DataFrame, alt_col: str = "height_ato", distance_filter: float = 10000
+) -> tuple[pd.DataFrame, float]:
     """
     Transforms a 3D dataset into a linear plane, focusing on the largest contiguous dataset aligned with
     the plane's primary orientation. The new x coordinate is the distance along the plane, y is the distance
     perpendicular to the plane (useful only for deviation), and z is the altitude.
 
     Parameters:
-        df (pd.DataFrame): Input dataframe with "utm_easting", "utm_northing", and "altitude_ato" columns.
+        df (pd.DataFrame): Input dataframe with "utm_easting", "utm_northing", and "height_ato" columns.
+        alt_col (str): Column name for altitude data. Default is "height_ato".
         distance_filter (float): Threshold for filtering points based on their distance from the regression line.
 
     Returns:
@@ -498,7 +509,6 @@ def flatten_linear_plane(df: pd.DataFrame, distance_filter: float = 10000) -> tu
         required_columns = ["utm_easting", "utm_northing"]
         if not all(col in df.columns for col in required_columns):
             raise ValueError(f"DataFrame must contain columns: {required_columns}")
-
         model = odr.Model(linear_reg_equation)
         data = odr.Data(df["utm_easting"], df["utm_northing"])
 
@@ -527,7 +537,7 @@ def flatten_linear_plane(df: pd.DataFrame, distance_filter: float = 10000) -> tu
     df.loc[:, "y"] = (df["utm_easting"] - df["utm_easting"].min()) * np.sin(-rotation) + (
         df["utm_northing"] - df["utm_northing"].min()
     ) * np.cos(-rotation)
-    df.loc[:, "z"] = df.altitude_ato
+    df.loc[:, "z"] = df[alt_col]
 
     plane_angle = (np.pi / 2) - np.arctan(coefs2D[0])
     return df, plane_angle

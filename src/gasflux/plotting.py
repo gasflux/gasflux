@@ -36,7 +36,7 @@ def scatter_3d(
     colorbar_title: str = "",
     x: str = "utm_easting",
     y: str = "utm_northing",
-    z: str = "altitude_ato",
+    z: str = "height_ato",
     courses: bool = False,
 ):
     fig = px.scatter_3d(df, x=x, y=y, z=z)
@@ -46,7 +46,7 @@ def scatter_3d(
         hovertemplate = [
             "northing: %{x:.2f}",
             "easting: %{y:.2f}",
-            "altitude_ato: %{z:.2f}",
+            "height_ato: %{z:.2f}",
             f"{color}: %{{marker.color:.2f}}",
             "Time: %{customdata[0]}",
             "idx: %{pointNumber}",
@@ -80,7 +80,7 @@ def scatter_2d(
     df: pd.DataFrame,
     x: str,
     color: str,
-    y: str = "altitude_ato",
+    y: str = "height_ato",
     **kwargs,
 ):
     fig = px.scatter(
@@ -97,7 +97,7 @@ def scatter_2d(
         hovertemplate="<br>".join(
             [
                 "x: %{x:.2f}",
-                "altitude_ato: %{y:.2f}",
+                "height_ato: %{y:.2f}",
                 "CH4: %{marker.color:.2f}",
                 "Time: %{customdata}",
             ],
@@ -472,7 +472,7 @@ def create_kml_file(data: pd.DataFrame, output_file: str, column: str, altitudem
         col_normalized = (row[column] - min) / (max_value - min_value)
         color = mcolors.rgb2hex(cmap(col_normalized))
 
-        pnt = kml.newpoint(coords=[(row["longitude"], row["latitude"], row["altitude_ato"])], altitudemode=altitudemode)
+        pnt = kml.newpoint(coords=[(row["longitude"], row["latitude"], row["height_ato"])], altitudemode=altitudemode)
         pnt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
         pnt.iconstyle.color = simplekml.Color.rgb(int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16))
         pnt.iconstyle.scale = 0.6

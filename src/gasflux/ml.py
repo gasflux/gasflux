@@ -30,7 +30,7 @@ def load_model():
 def make_prediction(
     df: pd.DataFrame,
     course_elevation="course_elevation",
-    altitude_ato="altitude_ato",
+    height_ato="height_ato",
     horiz_spd="horiz_spd",
     z_spd="z_spd",
 ) -> tuple[pd.DataFrame, go.Figure]:
@@ -38,21 +38,21 @@ def make_prediction(
     :param df: DataFrame containing the required features
     :param course_azimuth: Name of the column containing the course azimuth
     :param course_elevation: Name of the column containing the course elevation
-    :param altitude_ato: Name of the column containing the altitude above take-off
+    :param height_ato: Name of the column containing the height above take-off
     :param idx: Name of the column containing the index
 
     return: Tuple of the DataFrame with the predictions and a Plotly 3D scatter plot of the predictions
     """
     model = load_model()
     # Ensure the DataFrame contains all the required features
-    required_features = [course_elevation, altitude_ato, horiz_spd, z_spd]
+    required_features = [course_elevation, height_ato, horiz_spd, z_spd]
     if not all(feature in df.columns for feature in required_features):
         missing_features = [feature for feature in required_features if feature not in df.columns]
         raise ValueError(f"DataFrame is missing (or mislabelled) the following required features: {missing_features}")
     # make idx col if not present
     if "idx" not in df.columns:
         df["idx"] = df.index
-    cols_for_model = ["course_elevation", "altitude_ato", "idx", "horiz_spd", "z_spd"]
+    cols_for_model = ["course_elevation", "height_ato", "idx", "horiz_spd", "z_spd"]
     predictions = model.predict(df[cols_for_model])
 
     df["predictions"] = predictions

@@ -73,7 +73,7 @@ ordinary_kriging_settings:
 required_cols:
   latitude: [-90, 90]
   longitude: [-180, 180]
-  altitude_ato: [-100, 500]
+  height_ato: [-100, 500]
   windspeed: [0, 30]
   winddir: [0, 360]
   temperature: [-50, 60]
