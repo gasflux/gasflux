@@ -8,7 +8,7 @@
 # GasFlux
 
 `pip install gasflux` \
-`gasflux ---help`
+`gasflux --help`
 
 GasFlux is a tool for processing atmospheric gas concentration data and windspeeds into mass emissions fluxes, with principle applications to greenhouse gas measurement and vulcanology. Currently it works with in situ ("sniffing") data from UAVs and other aircraft, using mass balance as a paradigm and kriging as an interpolation strategy, but the intention is to expand this to other kinds of sampling and processing strategies, such as open-path and tracer methods.
 
@@ -68,6 +68,6 @@ To install, clone the repository using e.g. `git clone` and use  `pip install -e
 
 It's highly recommended to use a virtual environment to manage dependencies. If you're not currently using one, [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/install.html) is a good option.
 
-Then run `pip install -r requirements.txt` and `pip install -r requirements-dev.txt` to install the required dependencies.
+Then run `pip install -r requirements.txt` and `pip install -r dev-requirements.txt` to install the required dependencies.
 
 User requirements.txt is generated using `pigar generate` rather than `pip freeze`.
