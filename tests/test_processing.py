@@ -101,7 +101,7 @@ def test_bimodal_elevation():
         ), "Mode2 does not match expected elevation within 3 degrees"
 
 
-def test_altitude_transect_splitter():
+def test_height_transect_splitter():
     df = load_cols(["height_ato"])
     df, fig = gasflux.processing.height_transect_splitter(df)
     assert "transect_num" in df.columns, "Transect number column not added to dataframe"
