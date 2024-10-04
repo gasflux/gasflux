@@ -78,7 +78,7 @@ def generate_reports(name: str, processor, config: dict):
     # Save reports
     for gas, report in processor.reports.items():
         report_path = output_path / f"{name}_{gas}_report.html"
-        with open(report_path, "w") as file:
+        with open(report_path, "w", encoding="utf-8") as file:
             file.write(report)
 
     # Save config with version
