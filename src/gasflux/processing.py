@@ -147,22 +147,22 @@ def height_transect_splitter(df: pd.DataFrame, height_col: str = "height_ato") -
     """
     df = df.copy()
     heights = df[height_col].to_numpy()
-    heights, bin_edges = np.histogram(heights, bins=40)
+    counts, bin_edges = np.histogram(heights, bins=40)
     bin_width = bin_edges[1] - bin_edges[0]
     bin_edges = np.append(heights.min() - bin_width, bin_edges)  # avoid literal edge effects
     bin_edges = np.append(bin_edges, heights.max() + bin_width)
-    heights = np.append(0, heights)
-    heights = np.append(heights, 0)
+    counts = np.append(0, counts)
+    counts = np.append(counts, 0)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    peaks, properties = find_peaks(heights)
+    peaks, properties = find_peaks(counts)
     transect_edges = (bin_centers[peaks][:-1] + bin_centers[peaks][1:]) / 2
     transect_edges = np.append(heights.min(), transect_edges)
     transect_edges = np.append(transect_edges, heights.max())
     fig, ax = plt.subplots()
-    ax.stairs(edges=bin_edges, values=heights, fill=True)
-    ax.plot(bin_centers[peaks], heights[peaks], "x", color="red")
-    ax.vlines(transect_edges, ymin=0, ymax=max(heights), color="red")
-    df["transect_num"] = pd.cut(df["height_ato"], bins=list(transect_edges), labels=False, include_lowest=True)  # type: ignore
+    ax.stairs(edges=bin_edges, values=counts, fill=True)
+    ax.plot(bin_centers[peaks], counts[peaks], "x", color="red")
+    ax.vlines(transect_edges, ymin=0, ymax=max(counts), color="red")
+    df["transect_num"] = pd.cut(df[height_col], bins=list(transect_edges), labels=False, include_lowest=True)  # type: ignore
     return df, fig
 
 
