@@ -103,7 +103,7 @@ def test_bimodal_elevation():
 
 def test_altitude_transect_splitter():
     df = load_cols(["height_ato"])
-    df, fig = gasflux.processing.altitude_transect_splitter(df)
+    df, fig = gasflux.processing.height_transect_splitter(df)
     assert "transect_num" in df.columns, "Transect number column not added to dataframe"
     assert (
         df["transect_num"].nunique() == testconfig["number_of_transects"]
