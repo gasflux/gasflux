@@ -1,6 +1,6 @@
 """a script to split a folder of flights into multiple flights based on the monotonic changes in altitude.
 Takes a csv file as an input and will split it out into several csvs.
-Needs azimuth courses to work properly.
+Needs course azimuths to work properly.
 """
 
 import argparse

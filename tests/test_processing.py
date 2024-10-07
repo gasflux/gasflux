@@ -129,10 +129,10 @@ def test_course_filter():
     input_mode = testconfig["transect_azimuth"]
     input_reciprocal_mode = (input_mode + 180) % 360
     # assert that the filtered dataframe contains the expected azimuth or its reciprocal within the window
-    df_filtered["near_mode1"] = df_filtered["rolling_azimuth_course"].apply(
+    df_filtered["near_mode1"] = df_filtered["rolling_course_azimuth"].apply(
         lambda x: min_angular_displacement(x, input_mode) < azimuth_window
     )
-    df_filtered["near_mode2"] = df_filtered["rolling_azimuth_course"].apply(
+    df_filtered["near_mode2"] = df_filtered["rolling_course_azimuth"].apply(
         lambda x: min_angular_displacement(x, input_reciprocal_mode) < azimuth_window
     )
     assert (
