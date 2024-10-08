@@ -45,9 +45,10 @@ def add_utm(df: pd.DataFrame) -> pd.DataFrame:
     gdf = gdf.to_crs(utm)
     if not isinstance(gdf, gpd.GeoDataFrame):
         raise TypeError("Failed to reproject to a GeoDataFrame")
-    gdf["utm_easting"] = gdf.geometry.x  # type: ignore
-    gdf["utm_northing"] = gdf.geometry.y  # type: ignore
-    output_df = pd.DataFrame(gdf)
+    gdf["utm_easting"] = gdf.geometry.x
+    gdf["utm_northing"] = gdf.geometry.y
+    output_df = pd.DataFrame(gdf.drop(columns="geometry"))
+
     return output_df
 
 
