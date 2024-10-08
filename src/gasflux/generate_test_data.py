@@ -267,7 +267,7 @@ class SimulatedData2D:
                 self.windspeed_map,
                 cmap="viridis",
                 origin="lower",
-                extent=[0, self.scene_horizontal_range[1], 0, self.scene_altitude_range[1]],
+                extent=(0, self.scene_horizontal_range[1], 0, self.scene_altitude_range[1]),
             )
             ax2.set_title("Wind Speed Map")
             ax2.set_xlabel("X (m)")
@@ -305,7 +305,7 @@ class SimulatedData2D:
                 self.winddir_map,
                 cmap="hsv",
                 origin="lower",
-                extent=[0, self.scene_horizontal_range[1], 0, self.scene_altitude_range[1]],
+                extent=(0, self.scene_horizontal_range[1], 0, self.scene_altitude_range[1]),
             )
             ax4.set_title("Wind Direction Map")
             ax4.set_xlabel("X (m)")
