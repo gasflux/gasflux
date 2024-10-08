@@ -34,6 +34,7 @@ def scatter_3d(
     df: pd.DataFrame,
     color: str = "",
     colorbar_title: str = "",
+    timestamp: str = "timestamp",
     x: str = "utm_easting",
     y: str = "utm_northing",
     z: str = "height_ato",
@@ -42,7 +43,7 @@ def scatter_3d(
     fig = px.scatter_3d(df, x=x, y=y, z=z)
 
     if color:
-        custom_data = [df["timestamp"]]
+        custom_data = [df[timestamp]]
         hovertemplate = [
             "northing: %{x:.2f}",
             "easting: %{y:.2f}",
@@ -109,17 +110,19 @@ def scatter_2d(
 
 def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
     fig = go.Figure()
+    marker = dict(size=8, opacity=0.5)
+    if color is not None:
+        marker["color"] = df[color]
+        marker["colorscale"] = styling["colorscale"]  # type: ignore
     fig.add_trace(
         go.Scatter(
             x=df.index,
             y=df[y],
             name=y,
             mode="markers",
+            marker=marker,
         ),
     )
-    if color is not None:
-        fig.update_traces(marker_color=df[color], color_continuous_scale=styling["colorscale"])
-    fig.update_traces(marker_size=8)
     if y2 is not None:
         fig.add_trace(
             go.Scatter(
@@ -128,6 +131,7 @@ def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
                 name=y2,
                 yaxis="y2",
                 mode="markers",
+                marker=dict(size=8, opacity=0.5),
             ),
         )
         fig.update_layout(yaxis2=dict(overlaying="y", side="right"))
@@ -147,8 +151,10 @@ def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
                 ),
             ],
         )
-    fig.update(layout_yaxis_range=[0, df[y].max() * 1.05])
-    fig.update_traces(opacity=0.5)
+
+    # Update layout for y-axis range
+    fig.update_yaxes(range=[0, df[y].max() * 1.05])
+
     return fig
 
 
