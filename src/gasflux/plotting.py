@@ -43,25 +43,27 @@ def scatter_3d(
     fig = px.scatter_3d(df, x=x, y=y, z=z)
 
     if color:
-        custom_data = [df[timestamp]]
-        hovertemplate = [
-            "northing: %{x:.2f}",
-            "easting: %{y:.2f}",
-            "height_ato: %{z:.2f}",
+        custom_data = [df[timestamp].to_numpy()]
+        if courses:
+            custom_data.extend([df["course_elevation"].to_numpy(), df["course_azimuth"].to_numpy()])
+        custom_data = np.array(custom_data).T  # type: ignore
+        hover_template = [
+            f"{y}: %{{y:.2f}}",
+            f"{x}: %{{x:.2f}}",
+            f"{z}: %{{z:.2f}}",
             f"{color}: %{{marker.color:.2f}}",
-            "Time: %{customdata[0]}",
-            "idx: %{pointNumber}",
+            f"{timestamp}: %{{customdata[0]}}",
+            "Index: %{pointNumber}",
         ]
 
         if courses:
-            custom_data.extend([df["course_elevation"], df["course_azimuth"]])
-            hovertemplate.extend(
+            hover_template.extend(
                 [
-                    "course elevation: %{customdata[1]:.2f}",
-                    "course azimuth: %{customdata[2]:.2f}",
+                    "Course Elevation: %{customdata[1]:.2f}",
+                    "Course Azimuth: %{customdata[2]:.2f}",
                 ]
             )
-
+        hover_template_str = "<br>".join(hover_template)
         fig.update_traces(
             marker=dict(
                 color=df[color],
@@ -71,7 +73,7 @@ def scatter_3d(
                 colorbar=dict(title=colorbar_title),
             ),
             customdata=custom_data,
-            hovertemplate="<br>".join(hovertemplate),
+            hovertemplate=hover_template_str,
         )
 
     return fig
@@ -108,31 +110,26 @@ def scatter_2d(
     return fig
 
 
-def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
+def time_series(
+    df: pd.DataFrame, y: str, x: str = "timestamp", y2: str | None = None, color: str | None = None, split=None
+):
     fig = go.Figure()
     marker = dict(size=8, opacity=0.5)
+    custom_data = [df[x].to_numpy()]
+    custom_data = np.array(custom_data).T  # type: ignore
+    hover_template = [
+        "Index: %{pointNumber}",
+        f"{x}: %{{customdata[0]}}",
+        f"{y}: %{{y:.2f}}",
+    ]
     if color is not None:
         marker["color"] = df[color]
         marker["colorscale"] = styling["colorscale"]  # type: ignore
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df[y],
-            name=y,
-            mode="markers",
-            marker=marker,
-        ),
-    )
+        hover_template.append(f"{color}: %{{marker.color:.2f}}")
+    fig.add_trace(go.Scatter(x=df[x], y=df[y], name=y, mode="markers", marker=marker))
     if y2 is not None:
         fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df[y2],
-                name=y2,
-                yaxis="y2",
-                mode="markers",
-                marker=dict(size=8, opacity=0.5),
-            ),
+            go.Scatter(x=df[x], y=df[y2], name=y2, mode="markers", marker=dict(size=8, opacity=0.5), yaxis="y2")
         )
         fig.update_layout(yaxis2=dict(overlaying="y", side="right"))
     if split is not None:
@@ -148,13 +145,11 @@ def time_series(df: pd.DataFrame, y: str, y2=None, color=None, split=None):
                     x1=split,
                     y1=y_max,
                     line=dict(color="red", width=2),
-                ),
-            ],
+                )
+            ]
         )
-
-    # Update layout for y-axis range
     fig.update_yaxes(range=[0, df[y].max() * 1.05])
-
+    fig.update_traces(customdata=custom_data, hovertemplate="<br>".join(hover_template))
     return fig
 
 
