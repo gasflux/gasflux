@@ -73,14 +73,17 @@ class DataValidator:  # TODO(me): decide whether to move this to preprocessing
             if col in self.df:
                 if self.df[col].isna().any():
                     logging.error(f"Column '{col}' contains NaN values.")
+                    raise ValueError(f"Column '{col}' contains NaN values.")
                 if self.df[col].dtype != "float64":
                     logging.error(f"Column '{col}' is not of type 'float64'.")
+                    raise ValueError(f"Column '{col}' is not of type 'float64'.")
 
     def _check_ranges(self) -> None:
         """Check that the required columns are within the specified ranges."""
         for col, (min_val, max_val) in self.required_cols.items():
             if col in self.df.columns and not self.df[col].between(min_val, max_val, inclusive="both").all():
                 logging.error(f"Column '{col}' contains values out of range: {min_val} to {max_val}.")
+                raise ValueError(f"Column '{col}' contains values out of range: {min_val} to {max_val}.")
 
 
 class BackgroundStrategy(ABC):
@@ -122,7 +125,10 @@ class InSituSensorStrategy(SensorStrategy):
             self.data_processor.figs["scatter_3d"][gas] = gasflux.plotting.scatter_3d(
                 df=self.data_processor.df, color=gas, colorbar_title=f"{gas.upper()} flux (kg/m²/h)"
             )
-        self.data_processor.figs["windrose"] = gasflux.plotting.windrose(self.data_processor.df, plot_transect=True)
+        if SpatialProcessingStrategy == CurtainSpatialProcessingStrategy:
+            self.data_processor.figs["windrose"] = gasflux.plotting.windrose(self.data_processor.df, plot_transect=True)
+        else:
+            self.data_processor.figs["windrose"] = gasflux.plotting.windrose(self.data_processor.df)
         self.data_processor.figs["wind_timeseries"] = gasflux.plotting.time_series(
             self.data_processor.df, y="windspeed", y2="winddir"
         )
@@ -166,6 +172,40 @@ class CurtainSpatialProcessingStrategy(SpatialProcessingStrategy):
             )
 
 
+class SpiralSpatialProcessingStrategy(SpatialProcessingStrategy):
+    def process(self):
+        logger.info("Applying spiral spatial processing")
+        self.data_processor.dfs["original"] = self.data_processor.df.copy()
+        # self.data_processor.df, self.data_processor.start_transect, self.data_processor.end_transect = (
+        #     gasflux.processing.largest_monotonic_transect_series(self.data_processor.df)
+
+        # no wind offset correction - assume wind is perpendicular to the spiral
+        self.data_processor.dfs["removed"] = self.data_processor.dfs["original"].loc[
+            self.data_processor.dfs["original"].index.difference(self.data_processor.df.index)
+        ]
+        (
+            self.data_processor.df,
+            self.data_processor.circle_radius,
+            self.data_processor.circle_center_x,
+            self.data_processor.circle_center_y,
+        ) = gasflux.processing.circle_deviation(self.data_processor.df, x_col="utm_easting", y_col="utm_northing")
+        self.data_processor.df = gasflux.processing.recentre_azimuth(
+            self.data_processor.df, r=self.data_processor.circle_radius
+        )
+        self.data_processor.df["x"] = self.data_processor.df["circumference_distance"]
+        for gas in self.data_processor.gases:
+            self.data_processor.df = gasflux.gas.gas_flux_column(self.data_processor.df, gas)
+            self.data_processor.figs["scatter_3d"][gas].add_trace(
+                go.Scatter3d(
+                    x=self.data_processor.dfs["removed"]["utm_easting"],
+                    y=self.data_processor.dfs["removed"]["utm_northing"],
+                    z=self.data_processor.dfs["removed"]["height_ato"],
+                    mode="markers",
+                    marker={"size": 2, "color": "black", "symbol": "circle", "opacity": 0.5},
+                )
+            )
+
+
 class InterpolationStrategy(ABC):
     def __init__(self, data_processor):
         self.data_processor = data_processor
@@ -196,17 +236,6 @@ class KrigingInterpolationStrategy(InterpolationStrategy):
             logger.info(f"Kriged {gas}")
 
 
-def strategy_selection(self):
-    if self.config["strategies"]["background"] == "algorithm":
-        self.background_strategy = AlgorithmicBaselineStrategy(self)
-    if self.config["sensor_strategy"] == "insitu":
-        self.sensor_strategy = InSituSensorStrategy(self)
-    if self.config["spatial_processing_strategy"] == "curtain":
-        self.spatial_processing_strategy = CurtainSpatialProcessingStrategy(self)
-    if self.config["interpolation_strategy"] == "kriging":
-        self.interpolation_strategy = KrigingInterpolationStrategy(self)
-
-
 class DataProcessor:
     def __init__(self, config: dict, df: pd.DataFrame):
         self.config: dict = config
@@ -226,10 +255,22 @@ class DataProcessor:
         self.output_vars: dict = {"krig_parameters": {}, "std": {}}
         self.dfs: dict = {}
         self.reports: dict = {}
-        self.background_strategy = AlgorithmicBaselineStrategy(self)
-        self.sensor_strategy = InSituSensorStrategy(self)
-        self.spatial_processing_strategy = CurtainSpatialProcessingStrategy(self)
-        self.interpolation_strategy = KrigingInterpolationStrategy(self)
+
+    def strategy_selection(self):
+        self.background_strategy: BackgroundStrategy
+        if self.config["strategies"]["background"] == "algorithm":
+            self.background_strategy = AlgorithmicBaselineStrategy(self)
+        self.sensor_strategy: SensorStrategy
+        if self.config["strategies"]["sensor"] == "insitu":
+            self.sensor_strategy = InSituSensorStrategy(self)
+        self.spatial_processing_strategy: SpatialProcessingStrategy
+        if self.config["strategies"]["spatial"] == "curtain":
+            self.spatial_processing_strategy = CurtainSpatialProcessingStrategy(self)
+        if self.config["strategies"]["spatial"] == "spiral":
+            self.spatial_processing_strategy = SpiralSpatialProcessingStrategy(self)
+        self.interpolation_strategy: InterpolationStrategy
+        if self.config["strategies"]["interpolation"] == "kriging":
+            self.interpolation_strategy = KrigingInterpolationStrategy(self)
 
     def process(self):
         self.df = gasflux.pre_processing.add_utm(self.df)
@@ -267,6 +308,7 @@ def process_main(data_file: Path, config_file: Path) -> None:
     df = read_csv(data_file)
 
     processor = DataProcessor(config, df)
+    processor.strategy_selection()
     processor.process()
     gasflux.reporting.generate_reports(name, processor, config)
     logger.info("Processing complete")

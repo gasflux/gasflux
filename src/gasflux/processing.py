@@ -60,7 +60,7 @@ def wind_offset_correction(df: pd.DataFrame, plane_angle: float) -> pd.DataFrame
         pd.DataFrame: The modified dataframe with corrected wind direction data.
     """
     df = df.copy()
-    df["winddir_rel"] = df.apply(lambda row: abs(90 - min_angular_displacement(row["winddir"], plane_angle)), axis=1)
+    df["winddir_rel"] = df.apply(lambda row: abs(90 - min_angular_displacement(row["winddir"], plane_angle)), axis=1)  # type: ignore
     df["windspeed_measured"] = df["windspeed"]
     df["windspeed"] = df["windspeed"] * np.cos(np.radians(df["winddir_rel"]))
     return df
@@ -182,7 +182,7 @@ def add_transect_azimuth_switches(df: pd.DataFrame, threshold=150, shift=3) -> p
     df["transect_num"] = 0
     df["prev_course_azimuth"] = df["course_azimuth"].shift(shift)  # this gives better behaviour for very neat transects
     df["deg_displace"] = df.apply(
-        lambda row: min_angular_displacement(row["course_azimuth"], row["prev_course_azimuth"])
+        lambda row: min_angular_displacement(row["course_azimuth"], row["prev_course_azimuth"])  # type: ignore
         if not pd.isnull(row["prev_course_azimuth"])
         else np.nan,
         axis=1,
@@ -546,7 +546,7 @@ def flatten_linear_plane(
 ## Functions for circular/spiral flights ##
 
 
-def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[np.ndarray, np.ndarray, float]:
+def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[pd.DataFrame, float, float, float]:
     """
     Calculates the deviation of points from a fitted circle and their azimuth angles.
 
@@ -556,9 +556,10 @@ def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[np.ndarr
         y (str): Column name for the y-coordinate.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray, float]: A tuple containing the deviations of each point from the circle,
-        their azimuth angles, and the radius of the fitted circle.
+        Tuple[pd.Dataframe, float, float, float]: A tuple containing the modified dataframe with azimuth angles
+        and deviations,the radius of the fitted circle, and the coordinates of the circle's center.
     """
+    df = df.copy()
     required_columns = [x_col, y_col]
     if not all(col in df.columns for col in required_columns):
         raise ValueError(f"DataFrame must contain columns: {required_columns}")
@@ -588,7 +589,10 @@ def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[np.ndarr
     # output azimuth in radians with 0 at north and increasing clockwise thanks to modulos
     azimuth = np.degrees(np.arctan2(x - xc, y - yc) % (2 * np.pi))
 
-    return deviation, azimuth, r
+    df["circ_azimuth"] = azimuth
+    df["circ_deviation"] = deviation
+
+    return df, r, xc, yc
 
 
 def recentre_azimuth(df: pd.DataFrame, r: float, x: str = "circ_azimuth", y: str = "ch4_normalised") -> pd.DataFrame:
@@ -605,9 +609,10 @@ def recentre_azimuth(df: pd.DataFrame, r: float, x: str = "circ_azimuth", y: str
     Returns:
         pd.DataFrame: The modified dataframe with centered azimuth angles and distances along the circumference.
     """
+    df = df.copy()
 
     def azimuth_of_max(df: pd.DataFrame, x: str = "circ_azimuth", y: str = "ch4_normalised") -> float:
-        return df.loc[df[y].idxmax()][x]
+        return df.loc[df[y].idxmax()][x]  # type: ignore
 
     centre_azimuth = azimuth_of_max(df, x, y)
     df["centred_azimuth"] = df[x] - centre_azimuth
