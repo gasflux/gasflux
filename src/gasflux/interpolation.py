@@ -23,7 +23,7 @@ def directional_gas_semivariogram(
     """Function to calculate the directional semivariogram - typically horizontally - of a gas in a dataframe."""
     if semivariogram_filter:
         df = df[df[gas] > semivariogram_filter]
-    v = skg.Variogram(
+    v = skg.DirectionalVariogram(
         df[[x, z]].to_numpy(),
         df[gas].to_numpy(),
         **semivariogram_settings,
