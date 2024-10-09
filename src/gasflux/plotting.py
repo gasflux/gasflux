@@ -123,7 +123,7 @@ def time_series(
         f"{y}: %{{y:.2f}}",
     ]
     if color is not None:
-        marker["color"] = df[color]
+        marker["color"] = df[color]  # type: ignore
         marker["colorscale"] = styling["colorscale"]  # type: ignore
         hover_template.append(f"{color}: %{{marker.color:.2f}}")
     fig.add_trace(go.Scatter(x=df[x], y=df[y], name=y, mode="markers", marker=marker))
@@ -240,7 +240,7 @@ def windrose_process(df: pd.DataFrame):
         right=False,
     )
     df["beaufort_ms"] = df["beaufort"].map(beaufort_ms)
-    df_windrose = df.groupby(["wind_direction_bin", "beaufort"], observed=False).size().reset_index(name="count")
+    df_windrose = df.groupby(["wind_direction_bin", "beaufort"], observed=False).size().reset_index(name="count")  # type: ignore
     df_windrose["frequency"] = df_windrose["count"] / df_windrose["count"].sum() * 100
     df_windrose["wind_direction_bin_degs"] = df_windrose["wind_direction_bin"].cat.rename_categories(
         {
