@@ -34,11 +34,13 @@ semivariogram_settings:
   n_lags: 20
   bin_func: even
   fit_method: lm
-  maxlag: 100
-  #  fit_sigma: linear # this should allow for a spatial uncertainty but currently producing bugs
-  tolerance: 10
-  azimuth: 0
-  bandwidth: 20
+  ### Size of the search window; if the algorithm complains about not having enough neighbours, consider increasing these
+  maxlag: 100 # in meters. 
+  tolerance: 10 # in degrees
+  azimuth: 0 # in degrees (0 is right/horizontal)
+  bandwidth: 20 # in meters 
+
+   # fit_sigma: linear # this should allow for a spatial uncertainty but currently producing bugs
 ordinary_kriging_settings:
   min_points: 3
   max_points: 100
