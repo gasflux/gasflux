@@ -84,3 +84,9 @@ filters:
     azimuth_filter: 10
     azimuth_window: 5
     elevation_filter: 5
+
+strategies:
+  background: "algorithm"
+  sensor: "insitu"
+  spatial: "curtain"
+  interpolation: "kriging"
