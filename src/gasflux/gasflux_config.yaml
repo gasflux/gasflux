@@ -2,7 +2,7 @@
 
 output_dir: ~/gasflux_reports
 
-# required columns and ranges
+# required columns and maximum ranges
 required_cols:
   latitude: [-90, 90]
   longitude: [-180, 180]
@@ -12,7 +12,7 @@ required_cols:
   temperature: [-50, 60] # degrees Celsius
   pressure: [900, 1100] # hPa/mb
 
-# optional gas columns and ppm ranges. Relative concentrations are used so offset can be wrong as long as gain and linearity are correct.
+# optional gas columns and maximum ppm ranges. Relative concentrations are used so offset can be wrong as long as gain and linearity are correct.
 gases:
   ch4: [1.5, 500]
   co2: [300, 5000]
@@ -21,7 +21,7 @@ gases:
 strategies:
   background: "algorithm" # currently only algorithm (via pybaselines) is supported
   sensor: "insitu" # currently only insitu is supported
-  spatial: "curtain" # currently only curtain is supported
+  spatial: "curtain" # currently "curtain" and "spiral" are supported
   interpolation: "kriging" # currently only kriging is supported
 
 # algorithmic baseline settings
