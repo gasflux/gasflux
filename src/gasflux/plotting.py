@@ -357,8 +357,17 @@ def outliers(original_data: pd.Series, fence_high: float, fence_low: float):
 
 
 def contour_krig(
-    df: pd.DataFrame, gas: str, xx: np.ndarray, yy: np.ndarray, field: np.ndarray, x: str = "x", y: str = "z"
+    df: pd.DataFrame,
+    gas: str,
+    xx: np.ndarray,
+    yy: np.ndarray,
+    field: np.ndarray,
+    cut_ground: bool = False,
+    x: str = "x",
+    y: str = "height_ato",
 ) -> go.Figure:
+    if np.isnan(field).all():
+        return blank_figure()
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -374,7 +383,7 @@ def contour_krig(
                 },
             },
             showlegend=False,
-        ),
+        )
     )
     fig.add_trace(
         go.Contour(
@@ -384,20 +393,20 @@ def contour_krig(
             contours={
                 "start": field.min(),
                 "end": field.max(),
-                "size": field.max() / 21,
+                "size": (field[~np.isnan(field)].max() - field[~np.isnan(field)].min()) / 21,
             },
             colorscale=styling["colorscale"],
             opacity=0.5,
             showlegend=False,
             showscale=False,
-        ),
+        )
     )
     fig.update_xaxes(
         showline=True,
         linewidth=1,
         linecolor="black",
         title_text="horizontal distance on projected flux plane (m)",
-        range=[xx.min(), xx.max()],
+        range=[np.min(xx), np.max(xx)],
         ticks="outside",
         tickwidth=1,
         tickcolor="black",
@@ -408,14 +417,30 @@ def contour_krig(
         showline=True,
         linewidth=1,
         linecolor="black",
-        title_text="height above ground level (m)",
-        range=[yy.min(), yy.max()],
+        title_text="height above takeoff (m)",
+        range=[np.min(yy), np.max(yy)],
         ticks="outside",
         tickwidth=1,
         tickcolor="black",
         ticklen=5,
         nticks=10,
     )
+    if cut_ground:
+        resolution = 200  # how many points to interpolate over
+        df["ground_elevation_ato"] = df.loc[:, "height_ato"] - df.loc[:, "height_agl"]
+        df_sorted = df.dropna(subset=[x, "ground_elevation_ato"]).sort_values(x)
+        x_min, x_max = df_sorted[x].min(), df_sorted[x].max()
+        x_interp = np.linspace(x_min, x_max, resolution)
+        ground_ato_interp = np.interp(x_interp, df_sorted[x], df_sorted["ground_elevation_ato"])
+        fig.add_trace(
+            go.Scatter(
+                x=x_interp,
+                y=ground_ato_interp,
+                mode="lines",
+                line=dict(color="black", width=2, dash="dash"),
+                name="Interpolated Ground Level",
+            )
+        )
     fig.layout.coloraxis.colorbar.title = "Emissions flux (kg⋅m⁻²⋅h⁻¹)"
 
     return fig

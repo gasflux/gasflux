@@ -69,6 +69,8 @@ ordinary_kriging_settings:
   max_points: 100
   grid_resolution: 500
   min_nodes: 10
+  cut_ground: False
+  y_min: ~
 
 required_cols:
   latitude: [-90, 90]
