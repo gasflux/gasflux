@@ -101,7 +101,7 @@ def scatter_2d(
             [
                 "x: %{x:.2f}",
                 "height_ato: %{y:.2f}",
-                "CH4: %{marker.color:.2f}",
+                f"{color}: %{{marker.color:.2f}}",
                 "Time: %{customdata}",
             ],
         ),
@@ -153,20 +153,33 @@ def time_series(
     return fig
 
 
-def background_plotting(df: pd.DataFrame, y: str, bkg: np.ndarray, signal: pd.Series):
+def background_plotting(df: pd.DataFrame, gas: str):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    ymin = df[y].min()
-    ymax = df[y].max()
+    ymin = df[gas].min()
+    ymax = df[gas].max()
     ylim = [ymin * 0.95, ymax * 1.05]
-    y2min = (df[y] - bkg).min()
+    y2min = df[f"{gas}_normalised"].min()
     y2lim = (y2min, y2min + (ylim[1] - ylim[0]))
-    df["normalised"] = df[y] - bkg
-    fig.update_yaxes(range=ylim, secondary_y=False, title_text="Sensor CH4 (ppm)")
-    fig.update_yaxes(range=y2lim, secondary_y=True, title_text="Normalised CH4 (ppm)")
-    fig.add_scatter(x=df.index, y=df[y], opacity=0.3, name="Raw Data")
-    fig.add_scatter(x=df.index, y=bkg, mode="lines", name="Background", line=dict(dash="dash"))
-    fig.add_scatter(x=df.index, y=df["normalised"], yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5)
-    fig.add_scatter(x=signal.index, y=signal.values, yaxis="y2", name="Signal Points", mode="markers", opacity=0.5)
+    fig.update_yaxes(range=ylim, secondary_y=False, title_text=f"Sensor {gas} (ppm)")
+    fig.update_yaxes(range=y2lim, secondary_y=True, title_text=f"Normalised {gas} (ppm)")
+    fig.add_scatter(x=df["timestamp"], y=df[gas], opacity=0.3, name="Raw Data")
+    fig.add_scatter(
+        x=df["timestamp"], y=df[f"{gas}_fit"], mode="lines", name="Fitted Background", line=dict(dash="dash")
+    )
+    fig.add_scatter(
+        x=df["timestamp"], y=df[f"{gas}_normalised"], yaxis="y2", name="Normalised Data", mode="lines", opacity=0.5
+    )
+    fig.add_scatter(
+        x=df["timestamp"],
+        y=np.where(df[f"{gas}_signal"], df[f"{gas}_normalised"], np.nan),
+        yaxis="y2",
+        name="Classed as signal",
+        mode="lines",
+        opacity=0.5,
+        # color
+        # mode="markers",
+        # marker=dict(size=3),
+    )
 
     return fig
 
