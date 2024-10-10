@@ -39,10 +39,11 @@ semivariogram_settings:
   tolerance: 10 # in degrees
   azimuth: 0 # in degrees (0 is right/horizontal)
   bandwidth: 20 # in meters 
-
    # fit_sigma: linear # this should allow for a spatial uncertainty but currently producing bugs
 ordinary_kriging_settings:
-  min_points: 3
+  min_points: 3 
   max_points: 100
   grid_resolution: 500
   min_nodes: 10
+  y_min: ~  # manual override for the minimum y value. Leave blank or ~ to use ymin.
+  cut_ground: True # cuts everything below the ground level in the krig (need height_agl to work at the moment)
