@@ -24,8 +24,28 @@ strategies:
   spatial: "curtain" # currently "curtain" and "spiral" are supported
   interpolation: "kriging" # currently only kriging is supported
 
-# algorithmic baseline settings
-baseline_algorithm: fastchrom
+# baseline settings. 
+algorithmic_baseline_settings:
+  algorithm: fastchrom
+  fastchrom: {
+    "half_window": 6, 
+    "threshold": "custom", #
+    "min_fwhm": ~,
+    "interp_half_window": 3, 
+    "smooth_half_window": 3, 
+    "weights": ~, 
+    "max_iter": 100, 
+    "min_length": 2}
+  fabc : {
+    "lam": 10000,  # The smoothing parameter. Larger values will create smoother baselines. Default is 1e6.
+    "scale": 10,  # The scale at which to calculate the continuous wavelet transform. Should be approximately equal to the index-based full-width-at-half-maximum of the peaks or features in the data.  Default is None, which will use half of the value from optimize_window(), which is not always a good value, but at least scales with the number of data points and gives a starting point for tuning the parameter.
+    "diff_order": 2}  # The order of the differential matrix. Must be greater than 0. Default is 2 (second order differential matrix). Typical values are 2 or 1.
+  dietrich : {
+    "poly_order": 5,
+    "smooth_half_window": 5,}
+  golotvin : {
+    "half_window": 2, 
+    "sections": 10}
 
 # kriging settings
 semivariogram_settings:
