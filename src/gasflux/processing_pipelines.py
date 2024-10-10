@@ -103,8 +103,10 @@ class AlgorithmicBaselineStrategy(BackgroundStrategy):
                 self.data_processor.df,
                 self.data_processor.figs["background"][gas],
                 self.data_processor.text[f"background_{gas}"],
-            ) = gasflux.background.baseline(
-                df=self.data_processor.df, gas=gas, algorithm=self.data_processor.config["baseline_algorithm"]
+            ) = gasflux.background.algorithmic_baseline(
+                df=self.data_processor.df,
+                gas=gas,
+                algorithmic_baseline_settings=self.data_processor.config["algorithmic_baseline_settings"],
             )
         self.data_processor.df_std = self.data_processor.df.copy()
 

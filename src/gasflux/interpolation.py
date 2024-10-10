@@ -11,9 +11,8 @@ from . import plotting
 def simpsonintegrate(array: np.ndarray, x_cell_size: float, y_cell_size: float) -> float:
     """Function to obtain the volume of the krig in kgh⁻¹, i.e. the cut-fill volume
     (negative volumes from background noise are subtracted)."""
-    # zero the nan values
-    array = np.nan_to_num(array, copy=False, nan=0)
-    vol_rows = integrate.simpson(np.transpose(array))  # this integrates along each row of the grid
+    grid = np.nan_to_num(array.copy(), copy=False, nan=0)
+    vol_rows = integrate.simpson(np.transpose(grid))  # this integrates along each row of the grid
     vol_grid = integrate.simpson(vol_rows)  # this integrates the rows together
     return vol_grid * x_cell_size * y_cell_size  # type: ignore
 
