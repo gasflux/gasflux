@@ -43,16 +43,16 @@ def scatter_3d(
     fig = px.scatter_3d(df, x=x, y=y, z=z)
 
     if color:
-        custom_data = [df[timestamp].to_numpy()]
+        custom_data = [df[timestamp]]
         if courses:
-            custom_data.extend([df["course_elevation"].to_numpy(), df["course_azimuth"].to_numpy()])
-        custom_data = np.array(custom_data).T  # type: ignore
+            custom_data.extend([df["course_elevation"], df["course_azimuth"]])
+        custom_data = np.stack(custom_data, axis=-1)
         hover_template = [
-            f"{y}: %{{y:.2f}}",
             f"{x}: %{{x:.2f}}",
+            f"{y}: %{{y:.2f}}",
             f"{z}: %{{z:.2f}}",
             f"{color}: %{{marker.color:.2f}}",
-            f"{timestamp}: %{{customdata[0]}}",
+            f"{timestamp}: %{{customdata[0]|%Y-%m-%d %H:%M:%S}}",
             "Index: %{pointNumber}",
         ]
 
@@ -111,45 +111,137 @@ def scatter_2d(
 
 
 def time_series(
-    df: pd.DataFrame, y: str, x: str = "timestamp", y2: str | None = None, color: str | None = None, split=None
-):
+    df: pd.DataFrame,
+    ys: str | list[str],
+    x: str = "timestamp",
+    color: str | None = None,
+    split=None,
+    y_mins: float | list[float | int] | None = None,
+    rolling_average: bool = True,
+    scatter: bool = True,
+    rolling_window: int = 5,
+    y_titles: str | list[str] | None = None,
+    legend: bool = True,
+) -> go.Figure:
+    colors = px.colors.qualitative.Plotly
+
+    if isinstance(ys, str):
+        ys = [ys]
+    if y_titles is None:
+        y_titles = ys
+        single_title = False
+    elif isinstance(y_titles, str):
+        y_titles = [y_titles]
+        single_title = True
+    elif isinstance(y_titles, list):
+        if len(y_titles) != len(ys):
+            raise ValueError("Length of y_titles must be equal to length of ys")
+        single_title = False
+    else:
+        raise ValueError("Invalid y_titles value")
+    if isinstance(y_mins, (float | int)):
+        y_mins = [y_mins]
+    if isinstance(y_mins, list):
+        if len(y_mins) != len(ys):
+            raise ValueError("Length of y_mins must be equal to length of ys")
+
     fig = go.Figure()
-    marker = dict(size=8, opacity=0.5)
-    custom_data = [df[x].to_numpy()]
-    custom_data = np.array(custom_data).T  # type: ignore
-    hover_template = [
-        "Index: %{pointNumber}",
-        f"{x}: %{{customdata[0]}}",
-        f"{y}: %{{y:.2f}}",
-    ]
-    if color is not None:
-        marker["color"] = df[color]  # type: ignore
-        marker["colorscale"] = styling["colorscale"]  # type: ignore
-        hover_template.append(f"{color}: %{{marker.color:.2f}}")
-    fig.add_trace(go.Scatter(x=df[x], y=df[y], name=y, mode="markers", marker=marker))
-    if y2 is not None:
-        fig.add_trace(
-            go.Scatter(x=df[x], y=df[y2], name=y2, mode="markers", marker=dict(size=8, opacity=0.5), yaxis="y2")
-        )
-        fig.update_layout(yaxis2=dict(overlaying="y", side="right"))
-    if split is not None:
-        y_min, y_max = df[y].min(), df[y].max()
-        fig.update_layout(
-            shapes=[
-                dict(
-                    type="line",
-                    xref="x",
-                    yref="y",
-                    x0=split,
-                    y0=y_min,
-                    x1=split,
-                    y1=y_max,
-                    line=dict(color="red", width=2),
+
+    axis_space = 0.05
+    domain_start = axis_space * (len(ys)) if len(ys) > 1 else 0
+    fig.update_layout(
+        xaxis=dict(
+            domain=[domain_start, 1],
+        ),
+    )
+
+    for i, y in enumerate(ys):
+        yaxis_name = f"yaxis{i+1}"
+        yaxis_ref = f"y{i+1}"
+
+        trace_color = "black" if single_title and i == 0 else colors[i % len(colors)]
+
+        marker_i = dict(size=8, opacity=0.3 if rolling_average else 0.5, color=trace_color)
+        if color is not None:
+            marker_i["color"] = df[color]  # type: ignore
+            marker_i["colorscale"] = styling["colorscale"]
+
+        hover_template = f"{x}: %{{x}}<br>{y}: %{{y:.2f}}<br>"
+        if color:
+            hover_template += f"{color}: %{{marker.color:.2f}}<br>"
+
+        if scatter:
+            fig.add_trace(
+                go.Scatter(
+                    x=df[x],
+                    y=df[y],
+                    name=y,
+                    mode="markers",
+                    marker=marker_i,
+                    yaxis=yaxis_ref,
+                    hovertemplate=hover_template,
+                    showlegend=legend,
                 )
-            ]
+            )
+
+        if rolling_average:
+            df[f"rolling_avg_{i}"] = df[y].rolling(window=rolling_window, min_periods=1).mean()
+            fig.add_trace(
+                go.Scatter(
+                    x=df[x],
+                    y=df[f"rolling_avg_{i}"],
+                    name=f"{y} {rolling_window}-point avg",
+                    mode="lines",
+                    line=dict(color=trace_color, width=2),
+                    yaxis=yaxis_ref,
+                    showlegend=legend,
+                )
+            )
+
+        y_data = df[y]
+        y_min_var = y_data.min()
+        y_max_var = y_data.max()
+        y_range = y_max_var - y_min_var or y_max_var * 0.05
+
+        y_axis_min = y_mins[i] if y_mins is not None and y_mins[i] is not None else y_min_var - y_range * 0.05
+        y_axis_max = y_max_var + y_range * 0.05
+
+        if single_title and i == 0:
+            axis_title = y_titles[0]
+            axis_titlefont = dict(color="black")
+        elif not single_title:
+            axis_title = y_titles[i]
+            axis_titlefont = dict(color=trace_color)
+        else:
+            axis_title = None
+            axis_titlefont = {}
+
+        axis_config = dict(
+            title=axis_title,
+            titlefont=axis_titlefont,
+            tickfont=dict(color=trace_color),
+            range=[y_axis_min, y_axis_max],
+            side="left",
+            position=axis_space * i if i > 0 else None,
+            anchor="free" if i > 0 else None,
+            overlaying="y" if i > 0 else None,
+            showgrid=(i == 0),
         )
-    fig.update_yaxes(range=[0, df[y].max() * 1.05])
-    fig.update_traces(customdata=custom_data, hovertemplate="<br>".join(hover_template))
+
+        fig.layout[yaxis_name] = axis_config
+
+    if split is not None:
+        fig.add_shape(
+            type="line",
+            xref="x",
+            yref="paper",
+            x0=split,
+            y0=0,
+            x1=split,
+            y1=1,
+            line=dict(color="red", width=2),
+        )
+
     return fig
 
 
@@ -372,6 +464,7 @@ def outliers(original_data: pd.Series, fence_high: float, fence_low: float):
 def contour_krig(
     df: pd.DataFrame,
     gas: str,
+    # array of float 64
     xx: np.ndarray,
     yy: np.ndarray,
     field: np.ndarray,

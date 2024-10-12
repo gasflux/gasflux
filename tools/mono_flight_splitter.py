@@ -60,7 +60,7 @@ def main(target_dir, search_string, filter_mask, output_dir=None):
             unique_transects = len(group_df["transect_num"].unique())
             if unique_transects < 3:
                 print(
-                    colorama.Fore.RED + f"Not saving {group} - too few transects"
+                    colorama.Fore.RED + f"Not saving {group} from {file_path} - too few transects"
                     f"({unique_transects} transects at {formatted_avg_altitudes}m)"
                 )
             else:
