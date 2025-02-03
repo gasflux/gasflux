@@ -190,11 +190,8 @@ def add_transect_azimuth_switches(df: pd.DataFrame, threshold=150, shift=3) -> p
     df.loc[df["deg_displace"] > threshold, "transect_num"] = 1
     # remove ones that are next to each other
     for i in range(1, len(df)):
-        if (
-            df.loc[i, "transect_num"] == 1
-            and df.loc[i - 1, "transect_num"] == 1
-            or df.loc[i, "transect_num"] == 1
-            and df.loc[i - 2, "transect_num"] == 1
+        if (df.loc[i, "transect_num"] == 1 and df.loc[i - 1, "transect_num"] == 1) or (
+            df.loc[i, "transect_num"] == 1 and df.loc[i - 2, "transect_num"] == 1
         ):
             df.loc[i, "transect_num"] = 0
     df["transect_num"] = df["transect_num"].shift(-shift)  # recorrect for shift
