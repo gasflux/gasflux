@@ -1,6 +1,6 @@
 """Init file for gasflux package."""
 
-__version__ = "0.2.0"  # managed by semantic versioning
+__version__ = "0.2.1-rc.1"  # managed by semantic versioning
 
 from . import (
     background,

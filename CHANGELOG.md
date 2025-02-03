@@ -1,6 +1,66 @@
 # CHANGELOG
 
+## v0.2.1-rc.1 (2025-02-03)
 
+### Build
+
+* build: update action names ([`5f1d22d`](https://github.com/gasflux/gasflux/commit/5f1d22d74ea1fc0a63c82013e8e0d230fda0c0d2))
+
+### Feature
+
+* feat: add kwargs to baseline algorithm in config ([`91a9777`](https://github.com/gasflux/gasflux/commit/91a977766cc1efb9a15eb1c168494bbb24a79c48))
+
+* feat: ground-level cut for kriging ([`853d1e4`](https://github.com/gasflux/gasflux/commit/853d1e446490a367c257d286eb0a2f85697fea5d))
+
+* feat: better cli config generation ([`daf75ec`](https://github.com/gasflux/gasflux/commit/daf75ecae7e2b02208129e949b49417aadcba764))
+
+### Fix
+
+* fix: semantic version bumping ([`c4ef8da`](https://github.com/gasflux/gasflux/commit/c4ef8dabd4a7fc03270b1c0f4c325e1e177c5634))
+
+* fix: semantic version bumping ([`7c44c80`](https://github.com/gasflux/gasflux/commit/7c44c80100077e80d034771888fb0153cc927094))
+
+* fix: semantic version bumping ([`2c576a8`](https://github.com/gasflux/gasflux/commit/2c576a84a57c473c7ba8c4055f8182dfb964bd8d))
+
+* fix: plane_angle output in degrees ([`a1059b4`](https://github.com/gasflux/gasflux/commit/a1059b450823b1a6a586652f9ce17762f68b1ee9))
+
+* fix: time series baseline plot etc ([`35236ea`](https://github.com/gasflux/gasflux/commit/35236ea964c2f8d0989b9a9a24da2b106fea150c))
+
+* fix: add strategies to testconfig ([`6a620f2`](https://github.com/gasflux/gasflux/commit/6a620f2c0191446f542beeff5f3244764725051c))
+
+* fix: actually use a directional variogram ([`ce9b37e`](https://github.com/gasflux/gasflux/commit/ce9b37eef1a9e3249110bb972294004ac1468fee))
+
+* fix: drop geometry col from utm calc ([`06fa6a6`](https://github.com/gasflux/gasflux/commit/06fa6a6bffcb34c826b8528515567b2f2b133a47))
+
+* fix: colorscale updates ([`23575c9`](https://github.com/gasflux/gasflux/commit/23575c969dc444e7eddae21dabdcb59a636e2ff4))
+
+* fix: better grammar ([`cc65eef`](https://github.com/gasflux/gasflux/commit/cc65eef15102d5f171cb489c8027e0801f4766b8))
+
+* fix: change height/altitude terminology ([`931cf28`](https://github.com/gasflux/gasflux/commit/931cf28537edf2e049a7ccc4839274707cb79db4))
+
+* fix: function name in tests ([`5518c89`](https://github.com/gasflux/gasflux/commit/5518c89442aee1641fa9b98b22c3bf26c0560122))
+
+* fix: encoding for Windows ([`40c835a`](https://github.com/gasflux/gasflux/commit/40c835a65df139e31a7cb9431f54427f595497d8))
+
+* fix: typos ([`9b45d17`](https://github.com/gasflux/gasflux/commit/9b45d17c27e79257ea085c767f444d28d87baf81))
+
+* fix: change altitude_ato to height_ato ([`34f4620`](https://github.com/gasflux/gasflux/commit/34f46201ce57a429b6060a09861a7c199a9db66c))
+
+* fix: remove inaccurate language for heading ([`75556c3`](https://github.com/gasflux/gasflux/commit/75556c3ffa22c5480cc81c2bddc8fe0e0d3e6123))
+
+* fix: automate build and PyPI deployment ([`84792cc`](https://github.com/gasflux/gasflux/commit/84792cc7e7473583727393e57d80758a2c12fda0))
+
+* fix: update monotonic transect splitter ([`6395543`](https://github.com/gasflux/gasflux/commit/63955436eb1c70c41dd151e7efa072f9255e0065))
+
+* fix: automate build and PyPI deployment ([`d4aee57`](https://github.com/gasflux/gasflux/commit/d4aee57b8d7f71e23f0978165487f92b5085680a))
+
+* fix: automate build and PyPI deployment ([`6c80188`](https://github.com/gasflux/gasflux/commit/6c8018846225f951320f4c9b166a75f4079fef85))
+
+### Unknown
+
+* Merge branch &#39;develop&#39; ([`0f05ea4`](https://github.com/gasflux/gasflux/commit/0f05ea40769e85ffcfb26826e2116a438cc520f1))
+
+* 0.2.0 ([`90e9c6e`](https://github.com/gasflux/gasflux/commit/90e9c6e6ee3d58f3e2a998f1223ac0f8ce8b3d3f))
 
 ## v0.1.2 (2024-04-14)
 
@@ -8,24 +68,19 @@
 
 * fix: adding data files ([`480429d`](https://github.com/gasflux/gasflux/commit/480429d72519d6a53262e4ebbe480548a9162a37))
 
-
 ## v0.1.1 (2024-04-14)
 
-### Chore
+### Unknown
 
-* chore: bump requirements ([`9031363`](https://github.com/gasflux/gasflux/commit/90313637df28fb32fd97968fe2b84db68235ba12))
+* Update pyproject.toml ([`ee79814`](https://github.com/gasflux/gasflux/commit/ee798149660c07c05e3f64ba2c5ca1ac8340a11d))
 
-* chore: update gitignore ([`cf53b4b`](https://github.com/gasflux/gasflux/commit/cf53b4b2ba15a80c95b97e2552c96a13d6a80afb))
+* pypi (#40)
 
-### Documentation
+* build: twine &amp; pypi
 
-* docs: update readme ([`fd3ddf0`](https://github.com/gasflux/gasflux/commit/fd3ddf0fd9ff8a3d43e68636bb3bb54292a02e32))
+* test: change dir structure ([`7652335`](https://github.com/gasflux/gasflux/commit/76523356960978178e6e61955567bdcce12c2820))
 
-* docs: Update README.md ([`7c6b145`](https://github.com/gasflux/gasflux/commit/7c6b1450d87262bcf8f92d6285347c0b4b362872))
-
-* docs: update reademe ([`dd05004`](https://github.com/gasflux/gasflux/commit/dd050040990648a33d3454cb0627f71696de1603))
-
-* docs: readme and variable names ([`308f305`](https://github.com/gasflux/gasflux/commit/308f305ef075d3d87ca60bcebf1c4a51e851604b))
+## v0.1.0 (2024-04-14)
 
 ### Feature
 
@@ -43,25 +98,7 @@
 
 * fix: add debug access ([`a842940`](https://github.com/gasflux/gasflux/commit/a84294001f22ab83915444c13d040adadb0fc777))
 
-### Refactor
-
-* refactor: baseline -&gt; background ([`4cbd245`](https://github.com/gasflux/gasflux/commit/4cbd2453b65f6d1c9cf53e80ce0e1eed535b7930))
-
-### Test
-
-* test: config output == input ([`ae55a97`](https://github.com/gasflux/gasflux/commit/ae55a9732ab509b7b06c6701439ae55be53ffedf))
-
-* test: update for logging field ([`279f5bb`](https://github.com/gasflux/gasflux/commit/279f5bbc068576771af9381e048a0fb3837d8fe9))
-
 ### Unknown
-
-* Update pyproject.toml ([`ee79814`](https://github.com/gasflux/gasflux/commit/ee798149660c07c05e3f64ba2c5ca1ac8340a11d))
-
-* pypi (#40)
-
-* build: twine &amp; pypi
-
-* test: change dir structure ([`7652335`](https://github.com/gasflux/gasflux/commit/76523356960978178e6e61955567bdcce12c2820))
 
 * badges ([`aa0002a`](https://github.com/gasflux/gasflux/commit/aa0002ae6aacf67005d2131d7b61e9a3bfe7f9f8))
 
@@ -74,24 +111,6 @@
 * better wind handling (#34) ([`ddf2e01`](https://github.com/gasflux/gasflux/commit/ddf2e017fcaeae852491ac086aca91a48cbbc228))
 
 * Update LICENSE ([`347ade3`](https://github.com/gasflux/gasflux/commit/347ade3e4970869bf094bd52e44f423dfe74d790))
-
-* tests (#32)
-
-* remove [slice]
-
-* dtypes
-
-* config
-
-* edge_effects
-
-* test updates
-
-* tests
-
-* version
-
-* reqs ([`9b67a25`](https://github.com/gasflux/gasflux/commit/9b67a25afafbf1c348e144a33de1ca0e0d65145c))
 
 * Update CI.yml ([`16efe4e`](https://github.com/gasflux/gasflux/commit/16efe4ed16552534224b3254dfda5941bd81e6cd))
 
