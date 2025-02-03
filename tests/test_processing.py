@@ -58,12 +58,12 @@ def test_wind_offset_correction_parametrized(plane_angle, expected_winddir_rel, 
     corrected_df = gasflux.processing.wind_offset_correction(df, plane_angle)
     assert "winddir_rel" in corrected_df.columns, f"Relative wind direction column not added for angle {plane_angle}"
     assert "windspeed" in corrected_df.columns, f"Normalised wind speed column not added for angle {plane_angle}"
-    assert np.allclose(
-        corrected_df["winddir_rel"], expected_winddir_rel, rtol=1e-5, atol=1e-10
-    ), f"Relative wind directions not calculated correctly for angle {plane_angle}"
-    assert np.allclose(
-        corrected_df["windspeed"], expected_windspeed_normal, rtol=1e-5, atol=1e-10
-    ), f"Normalised wind speeds not calculated correctly for angle {plane_angle}"
+    assert np.allclose(corrected_df["winddir_rel"], expected_winddir_rel, rtol=1e-5, atol=1e-10), (
+        f"Relative wind directions not calculated correctly for angle {plane_angle}"
+    )
+    assert np.allclose(corrected_df["windspeed"], expected_windspeed_normal, rtol=1e-5, atol=1e-10), (
+        f"Normalised wind speeds not calculated correctly for angle {plane_angle}"
+    )
 
 
 def test_bimodal_azimuth():
@@ -76,9 +76,9 @@ def test_bimodal_azimuth():
     ), "Mode1 does not match expected azimuth or its reciprocal within 3 degrees"
 
     if min_angular_displacement(mode1, input_mode) < 3:
-        assert (
-            min_angular_displacement(mode2, input_reciprocal_mode) < 3
-        ), "Mode2 does not match expected reciprocal azimuth within 3 degrees"
+        assert min_angular_displacement(mode2, input_reciprocal_mode) < 3, (
+            "Mode2 does not match expected reciprocal azimuth within 3 degrees"
+        )
     else:
         assert min_angular_displacement(mode2, input_mode) < 3, "Mode2 does not match expected azimuth within 3 degrees"
 
@@ -92,30 +92,30 @@ def test_bimodal_elevation():
         min_angular_displacement(mode1, input_mode) < 3 or min_angular_displacement(mode1, input_reciprocal_mode) < 3
     ), "Mode1 does not match expected elevation or its reciprocal within 3 degrees"
     if min_angular_displacement(mode1, input_mode) < 3:
-        assert (
-            min_angular_displacement(mode2, input_reciprocal_mode) < 3
-        ), "Mode2 does not match expected reciprocal elevation within 3 degrees"
+        assert min_angular_displacement(mode2, input_reciprocal_mode) < 3, (
+            "Mode2 does not match expected reciprocal elevation within 3 degrees"
+        )
     else:
-        assert (
-            min_angular_displacement(mode2, input_mode) < 3
-        ), "Mode2 does not match expected elevation within 3 degrees"
+        assert min_angular_displacement(mode2, input_mode) < 3, (
+            "Mode2 does not match expected elevation within 3 degrees"
+        )
 
 
 def test_height_transect_splitter():
     df = load_cols(["height_ato"])
     df, fig = gasflux.processing.height_transect_splitter(df)
     assert "transect_num" in df.columns, "Transect number column not added to dataframe"
-    assert (
-        df["transect_num"].nunique() == testconfig["number_of_transects"]
-    ), "Dataframe was not split into the right number of transects"
+    assert df["transect_num"].nunique() == testconfig["number_of_transects"], (
+        "Dataframe was not split into the right number of transects"
+    )
 
 
 def test_add_transect_azimuth_switches():
     df = load_cols(["course_azimuth"])
     df = gasflux.processing.add_transect_azimuth_switches(df)
-    assert (
-        df["transect_num"].nunique() == testconfig["number_of_transects"]
-    ), "Transect azimuth switches not added to dataframe"
+    assert df["transect_num"].nunique() == testconfig["number_of_transects"], (
+        "Transect azimuth switches not added to dataframe"
+    )
 
 
 def test_course_filter():
@@ -135,9 +135,9 @@ def test_course_filter():
     df_filtered["near_mode2"] = df_filtered["rolling_course_azimuth"].apply(
         lambda x: min_angular_displacement(x, input_reciprocal_mode) < azimuth_window
     )
-    assert (
-        df_filtered["near_mode1"].any() or df_filtered["near_mode2"].any()
-    ), "Filtered dataframe does not contain expected azimuth or its reciprocal within the window"
+    assert df_filtered["near_mode1"].any() or df_filtered["near_mode2"].any(), (
+        "Filtered dataframe does not contain expected azimuth or its reciprocal within the window"
+    )
 
 
 def test_mCount_max():
