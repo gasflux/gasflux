@@ -23,9 +23,9 @@ __all__ = [
     "gas",
     "interpolation",
     "ml",
-    "processing_pipelines",
     "plotting",
     "pre_processing",
     "processing",
+    "processing_pipelines",
     "reporting",
 ]
