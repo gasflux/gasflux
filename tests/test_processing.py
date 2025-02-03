@@ -170,7 +170,6 @@ def test_remove_non_transects():
 def test_flatten_linear_plane():
     df = load_cols(["height_ato", "utm_easting", "utm_northing"])
     df, plane_angle = gasflux.processing.flatten_linear_plane(df)
-    plane_angle = np.degrees(plane_angle)
     input_plane_angle = testconfig["transect_azimuth"]
     reciprocal_plane_angle = (input_plane_angle + 180) % 360
     assert (
@@ -201,6 +200,6 @@ def test_drone_anemo_to_point_wind():
         [180, 270, 270, 225, 135]
     )  # 180 not zero because of the way IEEE 754 handles floating point numbers
     windspeed_diff = np.abs(result_df["windspeed"].values - expected_windspeed)
-    winddir_diff = gasflux.processing.min_angular_displacement(result_df["winddir"].values, expected_winddir)
+    winddir_diff = gasflux.processing.min_angular_displacement(result_df["winddir"].to_numpy(), expected_winddir)
     assert np.all(windspeed_diff < 1e-10), "Wind speed not calculated correctly"
     assert np.all(np.array(winddir_diff) < 3), "Wind direction not calculated correctly"
