@@ -37,7 +37,10 @@ jobs:
         run: ruff check .
         
       - name: safety
-        run: safety check  --ignore=70612
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{ secrets.SAFETY_API_KEY }}
+        # run: safety scan  --ignore=70612
 
   tests:
     runs-on: ubuntu-latest
