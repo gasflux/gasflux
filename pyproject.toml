@@ -1,13 +1,11 @@
 [project]
 name = "gasflux"
-version = "0.2.0"
+dynamic = ["version", "dependencies", "optional-dependencies"]
 description = "A package to calculate gas emissions fluxes from natural and anthropogenic sources"
 authors = [{ name = "Jamie McQuilkin", email = "jamie.mcquilkin@gmail.com" }]
 license = { text = "AGPL-3.0" }
 readme = "README.md"
 requires-python = ">=3.10"
-
-dynamic = ["dependencies", "optional-dependencies"]
 
 [project.scripts]
 gasflux = "gasflux.cli:main_cli"
@@ -21,6 +19,7 @@ requires = ["setuptools>=69.0", "wheel", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
+version = {attr = "gasflux.__version__"}
 dependencies = { file = ["requirements.txt"] }
 optional-dependencies = { dev = { file = ["dev-requirements.txt"] } }
 
@@ -62,7 +61,6 @@ major_on_zero = true
 allow_zero_version = true
 tag_format = "v{version}"
 version_variables = ["src/gasflux/__init__.py:__version__"]
-version_toml = ["pyproject.toml:project.version"]
 
 [tool.semantic_release.branches.main]
 match = "(main|master)"
@@ -70,9 +68,9 @@ prerelease_token = "rc"
 prerelease = false
 
 [tool.semantic_release.changelog]
-template_dir = "templates"
+# template_dir = "templates"
 changelog_file = "CHANGELOG.md"
-exclude_commit_patterns = []
+exclude_commit_patterns = ["ci", "test", "chore", "docs", "style", "refactor"]
 
 [tool.semantic_release.changelog.environment]
 block_start_string = "{%"

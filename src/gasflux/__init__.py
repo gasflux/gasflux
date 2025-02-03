@@ -1,8 +1,6 @@
 """Init file for gasflux package."""
 
-from importlib.metadata import version
-
-__version__ = version("gasflux")
+__version__ = "0.2.0"  # managed by semantic versioning
 
 from . import (
     background,
