@@ -1,7 +1,7 @@
 # CHANGELOG
 
 
-## v0.2.0 (2025-02-03)
+## v0.2.1 (2025-02-03)
 
 ### Bug Fixes
 
@@ -38,8 +38,8 @@
 - Encoding for Windows
   ([`40c835a`](https://github.com/gasflux/gasflux/commit/40c835a65df139e31a7cb9431f54427f595497d8))
 
-- Fix numpy conversion error
-  ([`903ae74`](https://github.com/gasflux/gasflux/commit/903ae74b30bd7b22d5873e3e2e0c2bbaf31f80d3))
+- Force patch update
+  ([`4210be2`](https://github.com/gasflux/gasflux/commit/4210be2d05145094fc2139981dde882594eb4b2b))
 
 - Function name in tests
   ([`5518c89`](https://github.com/gasflux/gasflux/commit/5518c89442aee1641fa9b98b22c3bf26c0560122))
@@ -50,20 +50,11 @@
 - Remove inaccurate language for heading
   ([`75556c3`](https://github.com/gasflux/gasflux/commit/75556c3ffa22c5480cc81c2bddc8fe0e0d3e6123))
 
-- Semantic version bumping
-  ([`c4ef8da`](https://github.com/gasflux/gasflux/commit/c4ef8dabd4a7fc03270b1c0f4c325e1e177c5634))
-
-- Semantic version bumping
-  ([`7c44c80`](https://github.com/gasflux/gasflux/commit/7c44c80100077e80d034771888fb0153cc927094))
-
-- Semantic version bumping
-  ([`2c576a8`](https://github.com/gasflux/gasflux/commit/2c576a84a57c473c7ba8c4055f8182dfb964bd8d))
+- Safety, semver etc
+  ([`7b534d7`](https://github.com/gasflux/gasflux/commit/7b534d7ee3bb087b07173e146686caf224f2a190))
 
 - Time series baseline plot etc
   ([`35236ea`](https://github.com/gasflux/gasflux/commit/35236ea964c2f8d0989b9a9a24da2b106fea150c))
-
-- Trigger new release
-  ([`a36cc30`](https://github.com/gasflux/gasflux/commit/a36cc30efa425d1e90725f61e6699c32754aa445))
 
 - Typos
   ([`9b45d17`](https://github.com/gasflux/gasflux/commit/9b45d17c27e79257ea085c767f444d28d87baf81))
