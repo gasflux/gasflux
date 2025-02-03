@@ -488,10 +488,10 @@ def flatten_linear_plane(
 
     Returns:
         tuple: Modified dataframe with new 'x', 'y', and 'z' columns representing transformed coordinates,
-        and the plane's angle of rotation.
+        and one of the plane's angles of rotation (from N, 0-360) in degrees.
     """
 
-    def orthogonal_distance_regression(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray[np.float64, Any]]:
+    def orthogonal_distance_regression(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray[Any, Any]]:
         """
         Perform orthogonal distance regression on the given DataFrame.
 
@@ -499,7 +499,7 @@ def flatten_linear_plane(
             df (pd.DataFrame): DataFrame containing "utm_easting" and "utm_northing" columns.
 
         Returns:
-            tuple[pd.DataFrame, np.ndarray[np.float64, Any]]: Updated DataFrame with "distance_from_fit" column
+            tuple[pd.DataFrame, np.ndarra[Any,Any]]]: Updated DataFrame with "distance_from_fit" column
             and the fitted parameters (slope, intercept).
         """
 
@@ -540,6 +540,7 @@ def flatten_linear_plane(
     df.loc[:, "z"] = df[alt_col]
 
     plane_angle = (np.pi / 2) - np.arctan(coefs2D[0])
+    plane_angle = np.degrees(plane_angle)
     return df, plane_angle
 
 

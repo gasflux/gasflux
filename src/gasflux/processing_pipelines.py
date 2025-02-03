@@ -132,7 +132,7 @@ class InSituSensorStrategy(SensorStrategy):
         else:
             self.data_processor.figs["windrose"] = gasflux.plotting.windrose(self.data_processor.df)
         self.data_processor.figs["wind_timeseries"] = gasflux.plotting.time_series(
-            self.data_processor.df, y="windspeed", y2="winddir"
+            self.data_processor.df, ys=["windspeed", "winddir"]
         )
 
 
