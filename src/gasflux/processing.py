@@ -562,8 +562,8 @@ def circle_deviation(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[pd.DataF
     if not all(col in df.columns for col in required_columns):
         raise ValueError(f"DataFrame must contain columns: {required_columns}")
 
-    x = df[x_col].to_numpy()
-    y = df[y_col].to_numpy()
+    x = df[x_col]
+    y = df[y_col]
 
     def midhalf(x):  # select middle half of data to avoid edge effects
         return x.iloc[int(len(x) * 1 / 4) : int(len(x) * 3 / 4)]
