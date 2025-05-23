@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.2 (2025-05-23)
+
+### Bug Fixes
+
+- Angular distance
+  ([`fd6d867`](https://github.com/gasflux/gasflux/commit/fd6d867bffb996f340bdba9b543be3d8e5a3b6b3))
+
+
 ## v0.2.1 (2025-02-03)
 
 ### Bug Fixes
