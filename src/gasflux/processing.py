@@ -89,7 +89,7 @@ def bimodal_azimuth(
     bin_centers = edges[:-1] + edgedist / 2
     max_freq_idx = np.argsort(hist)[-2:]  #  top 2 frequencies
     mode1, mode2 = bin_centers[max_freq_idx]
-    while np.abs(mode1 - mode2) < min_diff:
+    while min_angular_displacement(mode1, mode2) < min_diff:
         if hist[max_freq_idx[0]] < hist[max_freq_idx[1]]:
             hist[max_freq_idx[0]] = 0
             max_freq_idx = np.argsort(hist)[-2:]
